@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>记一笔 - 记账应用</title>
+<!-- Load Tailwind CSS v3 with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#1152d4',
+              light: '#e7eefa',
+              dark: '#0e42ab',
+            },
+            surface: '#f9fafb',
+          },
+          borderRadius: {
+            'custom': '8px', // Based on ROUND_EIGHT
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-layout">
+    body {
+      -webkit-tap-highlight-color: transparent;
+      background-color: #ffffff;
+      font-family: 'Inter', sans-serif;
+    }
+    /* Hide spin buttons for numeric input */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .safe-area-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-900">
+<!-- BEGIN: NavigationHeader -->
+<header class="flex items-center justify-between px-4 py-3 border-b border-slate-100 sticky top-0 bg-white z-10">
+<button aria-label="Go back" class="p-2 -ml-2 text-slate-600">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<h1 class="text-lg font-semibold">记一笔</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<!-- END: NavigationHeader -->
+<main class="flex flex-col min-h-[calc(100vh-60px)]">
+<!-- BEGIN: AmountInputSection -->
+<section class="px-6 py-8 text-center" data-purpose="transaction-amount-input">
+<label class="block text-sm font-medium text-slate-500 mb-1" for="amount">输入金额</label>
+<div class="relative inline-flex items-center justify-center w-full">
+<span class="text-4xl font-bold text-primary mr-1">$</span>
+<input autofocus="" class="text-5xl font-bold text-slate-900 border-none focus:ring-0 p-0 w-full text-center placeholder-slate-300" id="amount" placeholder="0.00" type="number"/>
+</div>
+</section>
+<!-- END: AmountInputSection -->
+<!-- BEGIN: TransactionTypeToggle -->
+<section class="px-6 mb-8" data-purpose="type-selector">
+<div class="bg-slate-100 p-1 rounded-custom flex">
+<button class="flex-1 py-2 text-sm font-semibold rounded-custom bg-white shadow-sm text-primary transition-all duration-200" id="btn-expense">支出</button>
+<button class="flex-1 py-2 text-sm font-semibold text-slate-500 transition-all duration-200" id="btn-income">收入</button>
+</div>
+</section>
+<!-- END: TransactionTypeToggle -->
+<!-- BEGIN: CategorySelection -->
+<section class="px-6 mb-8" data-purpose="category-grid">
+<h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">分类</h2>
+<div class="category-grid">
+<!-- Food -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">餐饮</span>
+</button>
+<!-- Shopping -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">购物</span>
+</button>
+<!-- Travel -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">旅行</span>
+</button>
+<!-- Bills -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">账单</span>
+</button>
+<!-- Health -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">医疗</span>
+</button>
+<!-- Entertainment -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">娱乐</span>
+</button>
+<!-- Education -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center ring-2 ring-transparent hover:ring-primary transition-all">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 14l9-5-9-5-9 5 9 5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-600">学习</span>
+</button>
+<!-- Add New -->
+<button class="flex flex-col items-center gap-2">
+<div class="w-12 h-12 rounded-full border-2 border-dashed border-slate-200 text-slate-400 flex items-center justify-center">
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<span class="text-xs font-medium text-slate-400">其他</span>
+</button>
+</div>
+</section>
+<!-- END: CategorySelection -->
+<!-- BEGIN: DetailsInputs -->
+<section class="px-6 space-y-4 mb-10" data-purpose="extra-details">
+<!-- Date Picker -->
+<div class="flex items-center gap-3 p-3 bg-slate-50 rounded-custom border border-slate-100">
+<svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<div class="flex-1">
+<label class="block text-[10px] uppercase font-bold text-slate-400 leading-none mb-1" for="date">日期</label>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-medium" id="date" type="date" value="2023-10-27"/>
+</div>
+</div>
+<!-- Note Field -->
+<div class="flex items-start gap-3 p-3 bg-slate-50 rounded-custom border border-slate-100">
+<svg class="h-5 w-5 text-slate-400 mt-0.5" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<div class="flex-1">
+<label class="block text-[10px] uppercase font-bold text-slate-400 leading-none mb-1" for="note">备注</label>
+<input class="w-full bg-transparent border-none p-0 focus:ring-0 text-sm font-medium placeholder-slate-400" id="note" placeholder="这笔钱花在哪了？" type="text"/>
+</div>
+</div>
+</section>
+<!-- END: DetailsInputs -->
+<!-- BEGIN: StickyActionButton -->
+<div class="px-6 py-4 border-t border-slate-100 mt-auto safe-area-bottom">
+<button class="w-full bg-primary text-white font-bold py-4 rounded-custom shadow-lg shadow-primary/20 hover:bg-opacity-90 active:scale-[0.98] transition-all text-lg">保存账目</button>
+</div>
+<!-- END: StickyActionButton -->
+</main>
+<script data-purpose="toggle-handler">
+    const btnExpense = document.getElementById('btn-expense');
+    const btnIncome = document.getElementById('btn-income');
+
+    btnExpense.addEventListener('click', () => {
+      btnExpense.classList.add('bg-white', 'shadow-sm', 'text-primary');
+      btnExpense.classList.remove('text-slate-500');
+      btnIncome.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      btnIncome.classList.add('text-slate-500');
+    });
+
+    btnIncome.addEventListener('click', () => {
+      btnIncome.classList.add('bg-white', 'shadow-sm', 'text-primary');
+      btnIncome.classList.remove('text-slate-500');
+      btnExpense.classList.remove('bg-white', 'shadow-sm', 'text-primary');
+      btnExpense.classList.add('text-slate-500');
+    });
+  </script>
+<script data-purpose="category-handler">
+    const categories = document.querySelectorAll('.category-grid button');
+    categories.forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Reset all
+        categories.forEach(b => b.querySelector('div')?.classList.remove('ring-primary'));
+        // Select current
+        btn.querySelector('div')?.classList.add('ring-primary');
+      });
+    });
+  </script>
+</body></html>
