@@ -516,17 +516,21 @@
 		display: inline-flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
+		padding-left: 24rpx;
+		padding-right: 24rpx;
 	}
 
 	.month-btn {
 		flex-shrink: 0;
-		padding: 6px 16px;
+		min-width: 124rpx;
+		padding: 12rpx 0;
 		border-radius: 16px;
 		font-size: 14px;
 		font-weight: 500;
 		color: #64748b;
 		background-color: #f9fafb;
-		margin-right: 8px;
+		margin-right: 16rpx;
+		text-align: center;
 	}
 
 	.month-btn.active {
