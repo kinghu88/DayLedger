@@ -14,9 +14,9 @@
 				<view class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'"><text>月</text></view>
 				<view class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'"><text>年</text></view>
 			</view>
-			<scroll-view class="month-scroll" scroll-x="true" :show-scrollbar="false">
+			<scroll-view v-if="period === 'month'" class="month-scroll" scroll-x="true" :show-scrollbar="false" :scroll-into-view="monthScrollIntoView" scroll-with-animation="true">
 				<view class="month-list">
-					<text v-for="m in months" :key="m" class="month-btn" :class="{ active: m === '本月', disabled: m === '6月' }">{{ m }}</text>
+					<text v-for="m in monthItems" :id="`month-${m.key}`" :key="m.key" class="month-btn" :class="{ active: m.key === selectedMonthKey, current: m.key === currentMonthKey }" @click="selectedMonthKey = m.key">{{ m.month }}月</text>
 				</view>
 			</scroll-view>
 		</header>
@@ -28,9 +28,19 @@
 					<text class="section-period">{{ chartPeriod }}</text>
 				</view>
 				<view class="chart-container">
+					<view v-if="hoveredBarIndex >= 0" class="chart-tooltip">
+						<text class="chart-tooltip-text">{{ barData[hoveredBarIndex].label }} ￥{{ formatMoney(barData[hoveredBarIndex].amount, 2) }}</text>
+					</view>
 					<view class="bar-chart">
 						<view v-for="(item, index) in barData" :key="index" class="bar-item">
-							<view class="bar" :style="{ height: item.height + '%', backgroundColor: item.color }"></view>
+							<view
+								class="bar"
+								:style="{ height: item.height + '%', backgroundColor: item.color }"
+								@mouseenter="onBarEnter(index)"
+								@mouseleave="onBarLeave"
+								@touchstart="onBarTap(index)"
+								@click="onBarTap(index)"
+							></view>
 							<text class="bar-label">{{ item.label }}</text>
 						</view>
 					</view>
@@ -41,14 +51,14 @@
 				<view class="budget-header">
 					<view class="budget-info">
 						<text class="section-title">本月预算</text>
-						<text class="budget-used">{{ budgetPercent }}% of ${{ formatMoney(budgetAmount, 0) }} 已用</text>
+						<text class="budget-used">{{ budgetPercent }}% of ￥{{ formatMoney(budgetAmount, 0) }} 已用</text>
 					</view>
-					<text class="budget-value">${{ formatMoney(totalExpense, 2) }}</text>
+					<text class="budget-value">￥{{ formatMoney(totalExpense, 2) }}</text>
 				</view>
 				<view class="progress-bar">
 					<view class="progress-fill" :style="{ width: Math.min(budgetPercent, 100) + '%' }"></view>
 				</view>
-				<text class="budget-remaining">剩余 ${{ formatMoney(Math.max(budgetAmount - totalExpense, 0), 0) }}</text>
+				<text class="budget-remaining">剩余 ￥{{ formatMoney(Math.max(budgetAmount - totalExpense, 0), 0) }}</text>
 			</view>
 
 			<view class="category-section">
@@ -78,7 +88,7 @@
 								<text class="category-percent">占比 {{ cat.percent }}%</text>
 							</view>
 						</view>
-						<text class="category-amount">${{ formatMoney(cat.amount, 2) }}</text>
+						<text class="category-amount">￥{{ formatMoney(cat.amount, 2) }}</text>
 					</view>
 				</view>
 			</view>
@@ -126,14 +136,46 @@
 </template>
 
 <script setup lang="uts">
-	import { ref, computed } from 'vue'
+	import { ref, computed, watch, nextTick } from 'vue'
 	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
 
 	const period = ref<string>('month')
 
-	const months = ['1月', '2月', '3月', '4月', '上月', '本月', '6月']
+	const nowForPeriod = new Date()
+	const currentYear = nowForPeriod.getFullYear()
+	const currentMonth = nowForPeriod.getMonth() + 1
+	
+	function pad2(n: number): string {
+		return String(n).padStart(2, '0')
+	}
+	
+	function monthKey(year: number, month: number): string {
+		return `${year}-${pad2(month)}`
+	}
+	
+	function parseMonthKey(key: string): { year: number; month: number } | null {
+		const parts = String(key || '').split('-')
+		if (parts.length !== 2) return null
+		const y = Number(parts[0])
+		const m = Number(parts[1])
+		if (!y || !m) return null
+		return { year: y, month: m }
+	}
+	
+	const currentMonthKey = monthKey(currentYear, currentMonth)
+	const selectedMonthKey = ref<string>(currentMonthKey)
+	const monthScrollIntoView = ref<string>('')
 
 	const transactionsData = ref<any[]>([])
+	const hoveredBarIndex = ref<number>(-1)
+	const tooltipTimer = ref<any | null>(null)
+	
+	function scrollMonthToCurrent() {
+		monthScrollIntoView.value = `month-${currentMonthKey}`
+		setTimeout(() => {
+			monthScrollIntoView.value = ''
+		}, 0)
+	}
 
 	function loadTransactions() {
 		seedTransactionsIfEmpty()
@@ -150,20 +192,162 @@
 		return '消费趋势 (本月)'
 	})
 
+	function dateFromISO(iso: string): Date | null {
+		const parts = String(iso || '').split('-')
+		if (parts.length !== 3) return null
+		const y = Number(parts[0])
+		const m = Number(parts[1])
+		const d = Number(parts[2])
+		if (!y || !m || !d) return null
+		return new Date(y, m - 1, d)
+	}
+	
+	const monthItems = computed(() => {
+		const window: { year: number; month: number; key: string }[] = []
+		for (let i = 11; i >= 0; i--) {
+			const d = new Date(currentYear, currentMonth - 1 - i, 1)
+			window.push({ year: d.getFullYear(), month: d.getMonth() + 1, key: monthKey(d.getFullYear(), d.getMonth() + 1) })
+		}
+		return window.map((m) => ({ key: m.key, year: m.year, month: m.month }))
+	})
+	
+	function startOfWeekMonday(date: Date): Date {
+		const day = date.getDay()
+		const diff = day === 0 ? 6 : day - 1
+		return new Date(date.getFullYear(), date.getMonth(), date.getDate() - diff)
+	}
+	
+	function formatMD(date: Date): string {
+		return `${date.getMonth() + 1}月${date.getDate()}日`
+	}
+	
 	const chartPeriod = computed(() => {
-		if (period.value === 'week') return '5月22日 - 5月28日'
-		if (period.value === 'year') return '1月1日 - 12月31日'
-		return '5月1日 - 5月31日'
+		const now = new Date()
+		if (period.value === 'week') {
+			const start = startOfWeekMonday(now)
+			const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+			return `${formatMD(start)} - ${formatMD(end)}`
+		}
+		if (period.value === 'year') {
+			const year = now.getFullYear()
+			return `${year}年1月1日 - 12月31日`
+		}
+		const parsed = parseMonthKey(selectedMonthKey.value) ?? { year: currentYear, month: currentMonth }
+		const start = new Date(parsed.year, parsed.month - 1, 1)
+		const end = new Date(parsed.year, parsed.month, 0)
+		if (parsed.year !== now.getFullYear()) return `${parsed.year}年${parsed.month}月1日 - ${parsed.month}月${end.getDate()}日`
+		return `${parsed.month}月1日 - ${parsed.month}月${end.getDate()}日`
 	})
 
 	const barData = computed(() => {
-		return [
-			{ height: 40, color: '#bfdbfe', label: 'W1' },
-			{ height: 65, color: '#93c5fd', label: 'W2' },
-			{ height: 90, color: '#1152d4', label: 'W3' },
-			{ height: 55, color: '#60a5fa', label: 'W4' }
-		]
+		const now = new Date()
+		const expenses = transactionsData.value.filter((t: any) => String(t.type || '') === 'expense')
+		const points: { label: string; sum: number }[] = []
+		
+		if (period.value === 'week') {
+			const start = startOfWeekMonday(now)
+			const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+			for (let i = 0; i < 7; i++) {
+				const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+				const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1)
+				const sum = expenses.reduce((acc: number, t: any) => {
+					const d = dateFromISO(String(t.date || ''))
+					if (!d) return acc
+					if (d.getTime() >= dayStart.getTime() && d.getTime() < dayEnd.getTime()) return acc + Number(t.amount || 0)
+					return acc
+				}, 0)
+				points.push({ label: labels[i] as string, sum })
+			}
+		} else if (period.value === 'year') {
+			const year = now.getFullYear()
+			for (let m = 1; m <= 12; m++) {
+				const start = new Date(year, m - 1, 1)
+				const end = new Date(year, m, 1)
+				const sum = expenses.reduce((acc: number, t: any) => {
+					const d = dateFromISO(String(t.date || ''))
+					if (!d) return acc
+					if (d.getTime() >= start.getTime() && d.getTime() < end.getTime()) return acc + Number(t.amount || 0)
+					return acc
+				}, 0)
+				points.push({ label: `${m}月`, sum })
+			}
+		} else {
+			const parsed = parseMonthKey(selectedMonthKey.value) ?? { year: currentYear, month: currentMonth }
+			const monthStart = new Date(parsed.year, parsed.month - 1, 1)
+			const monthEnd = new Date(parsed.year, parsed.month, 1)
+			const buckets = [0, 0, 0, 0]
+			expenses.forEach((t: any) => {
+				const d = dateFromISO(String(t.date || ''))
+				if (!d) return
+				if (d.getTime() < monthStart.getTime() || d.getTime() >= monthEnd.getTime()) return
+				const day = d.getDate()
+				const idx = Math.min(3, Math.floor((day - 1) / 7))
+				buckets[idx] += Number(t.amount || 0)
+			})
+			for (let i = 0; i < 4; i++) points.push({ label: `W${i + 1}`, sum: buckets[i] })
+		}
+		
+		const max = points.reduce((m: number, p) => Math.max(m, p.sum), 0)
+		
+		let highlightIdx = -1
+		if (period.value === 'week') {
+			const start = startOfWeekMonday(now)
+			const diffDays = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+			highlightIdx = Math.min(6, Math.max(0, diffDays))
+		} else if (period.value === 'year') {
+			highlightIdx = now.getMonth()
+		} else {
+			if (selectedMonthKey.value === currentMonthKey) {
+				highlightIdx = Math.min(3, Math.floor((now.getDate() - 1) / 7))
+			}
+		}
+		
+		return points.map((p, idx) => {
+			const height = max <= 0 ? 0 : Math.round((p.sum / max) * 100)
+			const color = idx === highlightIdx ? '#1152d4' : '#bfdbfe'
+			return { height, color, label: p.label, amount: p.sum }
+		})
 	})
+	
+	function onBarEnter(index: number) {
+		if (tooltipTimer.value) {
+			clearTimeout(tooltipTimer.value as any)
+			tooltipTimer.value = null
+		}
+		hoveredBarIndex.value = index
+	}
+	
+	function onBarLeave() {
+		if (tooltipTimer.value) {
+			clearTimeout(tooltipTimer.value as any)
+			tooltipTimer.value = null
+		}
+		hoveredBarIndex.value = -1
+	}
+	
+	function onBarTap(index: number) {
+		hoveredBarIndex.value = index
+		if (tooltipTimer.value) clearTimeout(tooltipTimer.value as any)
+		tooltipTimer.value = setTimeout(() => {
+			hoveredBarIndex.value = -1
+			tooltipTimer.value = null
+		}, 1500)
+	}
+	
+	watch(period, (p: string) => {
+		if (p === 'month') {
+			selectedMonthKey.value = currentMonthKey
+			nextTick(() => scrollMonthToCurrent())
+		}
+	})
+	
+	watch(monthItems, (list: any[]) => {
+		if (period.value !== 'month') return
+		if (!list.some((m: any) => String(m.key) === selectedMonthKey.value)) {
+			selectedMonthKey.value = (list.length > 0 ? String(list[list.length - 1].key) : currentMonthKey)
+		}
+		nextTick(() => scrollMonthToCurrent())
+	}, { immediate: true })
 
 	const budgetAmount = 2000
 	
@@ -329,10 +513,13 @@
 	}
 
 	.month-list {
+		display: inline-flex;
 		flex-direction: row;
+		flex-wrap: nowrap;
 	}
 
 	.month-btn {
+		flex-shrink: 0;
 		padding: 6px 16px;
 		border-radius: 16px;
 		font-size: 14px;
@@ -346,6 +533,10 @@
 		background-color: #1152d4;
 		color: #ffffff;
 		font-weight: 600;
+	}
+	
+	.month-btn.current {
+		box-shadow: 0 0 0 1px rgba(17, 82, 212, 0.35) inset;
 	}
 
 	.month-btn.disabled {
@@ -392,6 +583,28 @@
 
 	.chart-container {
 		height: 200px;
+		position: relative;
+		overflow: visible;
+	}
+	
+	.chart-tooltip {
+		position: absolute;
+		left: 50%;
+		top: 0;
+		transform: translateX(-50%);
+		background-color: rgba(255, 255, 255, 0.96);
+		border-radius: 999px;
+		padding: 6px 10px;
+		border-width: 1px;
+		border-color: #e5e7eb;
+		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+		z-index: 20;
+	}
+	
+	.chart-tooltip-text {
+		font-size: 12px;
+		font-weight: 600;
+		color: #0f172a;
 	}
 
 	.bar-chart {
@@ -400,6 +613,7 @@
 		justify-content: space-between;
 		height: 100%;
 		padding: 0 8px;
+		overflow: visible;
 	}
 
 	.bar-item {
@@ -598,6 +812,7 @@
 		position: relative;
 		top: -24px;
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-btn {
@@ -613,6 +828,7 @@
 		color: #ffffff;
 		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-icon {

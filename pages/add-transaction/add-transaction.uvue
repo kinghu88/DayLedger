@@ -14,7 +14,7 @@
 			<view class="amount-section">
 				<text class="amount-label">输入金额</text>
 				<view class="amount-row">
-					<text class="currency">$</text>
+					<text class="currency">￥</text>
 					<input class="amount-input" type="number" v-model="amount" placeholder="0.00" :focus="true" />
 				</view>
 			</view>
@@ -34,7 +34,18 @@
 				<text class="section-title">分类</text>
 				<view class="category-grid">
 					<view v-for="cat in categories" :key="cat.key" class="category-item" :class="{ selected: isCategoryTileSelected(cat.key) }" @click="onCategoryTileClick(cat.key)">
-						<view class="category-icon" :class="{ selected: isCategoryTileSelected(cat.key), dashed: !!cat.dashed }" :style="{ backgroundColor: cat.bg, color: cat.color }">
+						<view
+							class="category-icon"
+							:class="{ dashed: !!cat.dashed }"
+							:style="{
+								backgroundColor: isCategoryTileSelected(cat.key)
+									? (cat.key === 'other' ? '#e7eefa' : cat.bg)
+									: (cat.key === 'other' ? 'transparent' : '#f1f5f9'),
+								color: isCategoryTileSelected(cat.key)
+									? (cat.key === 'other' ? '#1152d4' : cat.color)
+									: '#94a3b8'
+							}"
+						>
 							<svg v-if="cat.key === 'food'" class="category-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 							</svg>
@@ -127,8 +138,14 @@
 			</view>
 			<scroll-view class="category-sheet-scroll" scroll-y="true" :show-scrollbar="false">
 				<view class="category-sheet-grid">
-					<view v-for="cat in moreCategories" :key="cat.key" class="category-sheet-item" @click="selectMoreCategory(cat.key)">
-						<view class="category-sheet-icon" :style="{ backgroundColor: cat.bg, color: cat.color }">
+						<view v-for="cat in moreCategories" :key="cat.key" class="category-sheet-item" :class="{ selected: selectedMoreCategory === cat.key }" @click="selectMoreCategory(cat.key)">
+							<view
+								class="category-sheet-icon"
+								:style="{
+									backgroundColor: selectedMoreCategory === cat.key ? cat.bg : '#f1f5f9',
+									color: selectedMoreCategory === cat.key ? cat.color : '#94a3b8'
+								}"
+							>
 							<svg v-if="cat.iconKind === 'home'" class="category-sheet-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 							</svg>
@@ -515,27 +532,17 @@
 		align-items: center;
 		justify-content: center;
 		margin-bottom: 10px;
-		border-width: 2px;
-		border-color: transparent;
 		overflow: visible;
-		transition-property: transform, box-shadow, border-color;
-		transition-duration: 120ms;
-		transition-timing-function: ease;
 	}
 
 	.category-icon.dashed {
+		border-width: 1px;
 		border-style: dashed;
-		border-color: #e2e8f0;
-	}
-
-	.category-icon.selected {
-		border-color: #1152d4;
-		box-shadow: 0 0 0 3px rgba(17, 82, 212, 0.15);
-		transform: scale(1.02);
+		border-color: #cbd5e1;
 	}
 	
 	.category-item.selected .category-name {
-		color: #1152d4;
+		color: #0f172a;
 		font-weight: 600;
 	}
 
@@ -547,7 +554,7 @@
 	.category-name {
 		font-size: 12px;
 		font-weight: 500;
-		color: #475569;
+		color: #94a3b8;
 	}
 
 	.details-section {
@@ -759,7 +766,12 @@
 	.category-sheet-name {
 		font-size: 12px;
 		font-weight: 500;
-		color: #475569;
+		color: #94a3b8;
+	}
+	
+	.category-sheet-item.selected .category-sheet-name {
+		color: #0f172a;
+		font-weight: 600;
 	}
 
 	.save-section {

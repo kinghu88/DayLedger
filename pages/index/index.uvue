@@ -11,15 +11,15 @@
 			<view class="header-stats">
 				<view class="stat-item">
 					<text class="stat-label">收入</text>
-					<text class="stat-value">${{ income.toFixed(0) }}</text>
+					<text class="stat-value">￥{{ income.toFixed(0) }}</text>
 				</view>
 				<view class="stat-item">
 					<text class="stat-label">支出</text>
-					<text class="stat-value">${{ expense.toFixed(0) }}</text>
+					<text class="stat-value">￥{{ expense.toFixed(0) }}</text>
 				</view>
 				<view class="stat-item">
 					<text class="stat-label">结余</text>
-					<text class="stat-value">${{ balance.toFixed(0) }}</text>
+					<text class="stat-value">￥{{ balance.toFixed(0) }}</text>
 				</view>
 			</view>
 		</header>
@@ -32,7 +32,7 @@
 					<view class="doughnut-placeholder">
 						<view class="doughnut-inner">
 							<text class="chart-label">总计</text>
-							<text class="chart-value">${{ expense.toFixed(0) }}</text>
+							<text class="chart-value">￥{{ expense.toFixed(0) }}</text>
 						</view>
 					</view>
 				</view>
@@ -184,18 +184,17 @@
 		const yesterday = new Date(today)
 		yesterday.setDate(yesterday.getDate() - 1)
 
-		if (date.toDateString() === today.toDateString()) return 'Today'
-		if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+		if (date.toDateString() === today.toDateString()) return '今天'
+		if (date.toDateString() === yesterday.toDateString()) return '昨天'
 
-		const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-		return `${monthNames[date.getMonth()]} ${date.getDate()}`
+		return `${date.getMonth() + 1}月${date.getDate()}`
 	}
 
 	function formatCurrency(amount: number): string {
 		const fixed = amount.toFixed(2)
 		const parts = fixed.split('.')
 		const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-		return `$${withCommas}.${parts[1]}`
+		return `￥${withCommas}.${parts[1]}`
 	}
 
 	function iconKindFor(t: any): string {
@@ -417,10 +416,13 @@
 	}
 
 	.legend-item {
+		flex-basis: 50%;
 		width: 50%;
 		flex-direction: row;
 		align-items: center;
 		margin-bottom: 12px;
+		padding-right: 8px;
+		box-sizing: border-box;
 	}
 
 	.legend-dot {
@@ -551,6 +553,7 @@
 		position: relative;
 		top: -24px;
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-btn {
@@ -566,6 +569,7 @@
 		color: #ffffff;
 		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-icon {

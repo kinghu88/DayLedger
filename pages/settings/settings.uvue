@@ -477,6 +477,7 @@
 		position: relative;
 		top: -24px;
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-btn {
@@ -492,6 +493,7 @@
 		color: #ffffff;
 		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
 		z-index: 60;
+		overflow: visible;
 	}
 
 	.nav-fab-icon {
