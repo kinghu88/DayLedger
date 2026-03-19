@@ -4,7 +4,7 @@
 			<text class="header-title">设置</text>
 		</header>
 
-		<scroll-view class="content" scroll-y="true">
+		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
 			<view class="profile-section">
 				<view class="profile-card">
 					<view class="avatar-container">
@@ -32,18 +32,26 @@
 					<view class="group-card">
 						<view class="menu-item" @click="onMenuClick('账本管理')">
 							<view class="menu-icon">
-								<text>📖</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">账本管理</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 						<view class="menu-divider"></view>
 						<view class="menu-item" @click="onMenuClick('分类管理')">
 							<view class="menu-icon">
-								<text>🏷️</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">分类管理</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 					</view>
 				</view>
@@ -53,18 +61,26 @@
 					<view class="group-card">
 						<view class="menu-item" @click="onMenuClick('记账提醒')">
 							<view class="menu-icon">
-								<text>🔔</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">记账提醒</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 						<view class="menu-divider"></view>
 						<view class="menu-item" @click="onMenuClick('导出数据')">
 							<view class="menu-icon">
-								<text>📤</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">导出数据</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 					</view>
 				</view>
@@ -74,18 +90,27 @@
 					<view class="group-card">
 						<view class="menu-item" @click="onMenuClick('通用设置')">
 							<view class="menu-icon">
-								<text>⚙️</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">通用设置</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 						<view class="menu-divider"></view>
 						<view class="menu-item" @click="onMenuClick('关于我们')">
 							<view class="menu-icon">
-								<text>ℹ️</text>
+								<svg class="menu-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<text class="menu-text">关于我们</text>
-							<text class="menu-arrow">›</text>
+							<svg class="menu-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+							</svg>
 						</view>
 					</view>
 				</view>
@@ -138,7 +163,24 @@
 </template>
 
 <script setup lang="uts">
+	import { exportTransactionsJson, seedTransactionsIfEmpty } from '../../services/transactions'
+	
+	function exportData() {
+		seedTransactionsIfEmpty()
+		const json = exportTransactionsJson(true)
+		uni.setClipboardData({
+			data: json,
+			success: () => {
+				uni.showToast({ title: '已复制到剪贴板', icon: 'success' })
+			}
+		})
+	}
+	
 	function onMenuClick(title: string) {
+		if (title === '导出数据') {
+			exportData()
+			return
+		}
 		uni.showToast({ title: `${title}功能开发中`, icon: 'none' })
 	}
 
@@ -209,6 +251,12 @@
 	.content {
 		flex: 1;
 		padding-bottom: 100px;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	
+	.content::-webkit-scrollbar {
+		display: none;
 	}
 
 	.profile-section {
@@ -222,6 +270,8 @@
 		border-radius: 12px;
 		padding: 20px;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+		border-width: 1px;
+		border-color: rgba(17, 82, 212, 0.05);
 	}
 
 	.avatar-container {
@@ -302,21 +352,26 @@
 		font-weight: 600;
 		color: #94a3b8;
 		text-transform: uppercase;
+		letter-spacing: 2px;
 		margin-bottom: 12px;
 		padding-left: 8px;
+		padding-right: 8px;
 	}
 
 	.group-card {
 		background-color: #ffffff;
 		border-radius: 12px;
 		overflow: hidden;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+		border-width: 1px;
+		border-color: rgba(17, 82, 212, 0.05);
 	}
 
 	.menu-item {
 		flex-direction: row;
 		align-items: center;
 		padding: 16px;
+		padding-left: 16px;
+		padding-right: 16px;
 	}
 
 	.menu-icon {
@@ -327,10 +382,12 @@
 		align-items: center;
 		justify-content: center;
 		margin-right: 16px;
+		color: #1152d4;
 	}
-
-	.menu-icon text {
-		font-size: 20px;
+	
+	.menu-icon-svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.menu-text {
@@ -341,14 +398,16 @@
 	}
 
 	.menu-arrow {
-		font-size: 20px;
+		width: 20px;
+		height: 20px;
 		color: #94a3b8;
 	}
 
 	.menu-divider {
 		height: 1px;
 		background-color: #f1f5f9;
-		margin-left: 72px;
+		margin-left: 16px;
+		margin-right: 16px;
 	}
 
 	.logout-section {
@@ -357,7 +416,8 @@
 
 	.logout-btn {
 		width: 100%;
-		padding: 16px;
+		padding-top: 16px;
+		padding-bottom: 16px;
 		border-radius: 12px;
 		border-width: 2px;
 		border-color: #1152d4;
@@ -376,14 +436,14 @@
 		background-color: #ffffff;
 		border-top-width: 1px;
 		border-top-color: #e5e7eb;
-		box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+		box-shadow: none;
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: 12px;
+		padding-bottom: calc(12px + env(safe-area-inset-bottom));
 		z-index: 40;
 		overflow: visible;
 	}

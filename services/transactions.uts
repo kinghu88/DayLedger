@@ -1,0 +1,136 @@
+export type TransactionType = 'income' | 'expense'
+
+export type Transaction = {
+	id: string
+	type: TransactionType
+	amount: number
+	category: string
+	description: string
+	note?: string
+	date: string
+	iconText?: string
+	iconBg?: string
+	iconColor?: string
+	iconKind?: string
+}
+
+const STORAGE_KEY = 'transactions'
+
+function safeParseArray(value: string): any[] {
+	try {
+		const parsed = JSON.parse(value)
+		return Array.isArray(parsed) ? parsed : []
+	} catch (e) {
+		return []
+	}
+}
+
+function normalizeTransaction(raw: any): Transaction | null {
+	if (!raw) return null
+	const id = String(raw.id || '')
+	if (!id) return null
+	const type = String(raw.type || 'expense') as TransactionType
+	const amount = Number(raw.amount)
+	const category = String(raw.category || '')
+	const description = String(raw.description || raw.note || '')
+	const date = String(raw.date || '')
+	if (!date) return null
+	if (!amount || amount <= 0) return null
+	if (type !== 'income' && type !== 'expense') return null
+
+	const tx: Transaction = {
+		id,
+		type,
+		amount,
+		category,
+		description,
+		date
+	}
+
+	if (raw.note != null) tx.note = String(raw.note)
+	if (raw.iconText != null) tx.iconText = String(raw.iconText)
+	if (raw.iconBg != null) tx.iconBg = String(raw.iconBg)
+	if (raw.iconColor != null) tx.iconColor = String(raw.iconColor)
+	if (raw.iconKind != null) tx.iconKind = String(raw.iconKind)
+	return tx
+}
+
+export function seedTransactionsIfEmpty(): Transaction[] {
+	const existing = getTransactions()
+	if (existing.length > 0) return existing
+
+	const seeded: Transaction[] = [
+		{ id: '1', type: 'expense', amount: 84.2, category: '餐饮', description: '超市购物', date: '2026-03-19', iconText: '🛒', iconBg: '#ffedd5', iconColor: '#ea580c' },
+		{ id: '5', type: 'expense', amount: 26.5, category: '餐饮', description: '早餐', date: '2026-03-20', iconText: '🧋', iconBg: '#ffedd5', iconColor: '#ea580c' },
+		{ id: '6', type: 'expense', amount: 18.0, category: '交通', description: '地铁', date: '2026-03-20', iconText: '🚇', iconBg: '#dbeafe', iconColor: '#2563eb' },
+		{ id: '7', type: 'expense', amount: 129.9, category: '购物', description: '日用品', date: '2026-03-19', iconText: '🧺', iconBg: '#e0f2fe', iconColor: '#0284c7' },
+		{ id: '8', type: 'income', amount: 220, category: '兼职', description: '设计接单', date: '2026-03-19', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
+		{ id: '9', type: 'expense', amount: 58.0, category: '餐饮', description: '晚餐', date: '2026-03-18', iconText: '🍜', iconBg: '#ffedd5', iconColor: '#ea580c' },
+		{ id: '2', type: 'income', amount: 5000, category: '工资', description: '月薪', date: '2026-03-15', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
+		{ id: '10', type: 'expense', amount: 199.0, category: '购物', description: '衣物', date: '2026-03-16', iconText: '👕', iconBg: '#e0f2fe', iconColor: '#0284c7' },
+		{ id: '11', type: 'expense', amount: 12.0, category: '其他', description: '停车费', date: '2026-03-16', iconText: '🅿️', iconBg: '#f1f5f9', iconColor: '#64748b' },
+		{ id: '12', type: 'expense', amount: 66.0, category: '餐饮', description: '聚餐AA', date: '2026-03-14', iconText: '🍲', iconBg: '#ffedd5', iconColor: '#ea580c' },
+		{ id: '13', type: 'income', amount: 88.0, category: '红包', description: '家庭红包', date: '2026-03-13', iconText: '🧧', iconBg: '#dcfce7', iconColor: '#16a34a' },
+		{ id: '3', type: 'expense', amount: 35.0, category: '交通', description: '打车', date: '2026-03-18', iconText: '🚗', iconBg: '#dbeafe', iconColor: '#2563eb' },
+		{ id: '14', type: 'expense', amount: 39.9, category: '其他', description: '会员订阅', date: '2026-03-12', iconText: '🎫', iconBg: '#f1f5f9', iconColor: '#64748b' },
+		{ id: '15', type: 'expense', amount: 168.0, category: '健康', description: '体检预约', date: '2026-03-10', iconText: '🩺', iconBg: '#fee2e2', iconColor: '#dc2626' },
+		{ id: '16', type: 'expense', amount: 420.0, category: '水电', description: '水电燃气', date: '2026-03-05', iconText: '💡', iconBg: '#fef9c3', iconColor: '#ca8a04' },
+		{ id: '4', type: 'expense', amount: 2000.0, category: '房租', description: '房租', date: '2026-03-01', iconText: '🏠', iconBg: '#f3e8ff', iconColor: '#9333ea' }
+	]
+
+	setTransactions(seeded)
+	return seeded
+}
+
+export function getTransactions(): Transaction[] {
+	const stored = uni.getStorageSync(STORAGE_KEY) as string | null
+	if (!stored) return []
+	const arr = safeParseArray(stored)
+	const result: Transaction[] = []
+	for (let i = 0; i < arr.length; i++) {
+		const tx = normalizeTransaction(arr[i])
+		if (tx) result.push(tx)
+	}
+	return result
+}
+
+export function setTransactions(list: Transaction[]): void {
+	uni.setStorageSync(STORAGE_KEY, JSON.stringify(list))
+}
+
+export function getTransactionById(id: string): Transaction | null {
+	const list = getTransactions()
+	const found = list.find((t: Transaction) => t.id === id)
+	return found ? found : null
+}
+
+export function addTransaction(tx: Transaction): void {
+	const list = getTransactions()
+	list.push(tx)
+	setTransactions(list)
+}
+
+export function updateTransactionById(id: string, updater: (prev: Transaction) => Transaction): Transaction | null {
+	const list = getTransactions()
+	const idx = list.findIndex((t: Transaction) => t.id === id)
+	if (idx < 0) return null
+	const next = updater(list[idx])
+	list[idx] = next
+	setTransactions(list)
+	return next
+}
+
+export function deleteTransactionById(id: string): boolean {
+	const list = getTransactions()
+	const next = list.filter((t: Transaction) => t.id !== id)
+	if (next.length === list.length) return false
+	setTransactions(next)
+	return true
+}
+
+export function exportTransactionsJson(pretty: boolean): string {
+	const list = getTransactions()
+	if (pretty) return JSON.stringify(list, null, 2)
+	return JSON.stringify(list)
+}
+

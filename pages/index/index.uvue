@@ -70,7 +70,7 @@
 					<view v-if="recentTransactions.length === 0" class="empty-state">
 						<text>暂无交易记录</text>
 					</view>
-					<view v-for="item in recentTransactions" :key="item.id" class="transaction-item">
+					<view v-for="item in recentTransactions" :key="item.id" class="transaction-item" @click="goToTransactionDetail(item.id)">
 						<view class="transaction-left">
 							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
 								<svg v-if="item.iconKind === 'cart'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,6 +148,7 @@
 
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
+	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
 
 	const currentMonth = computed(() => {
 		const now = new Date()
@@ -157,29 +158,8 @@
 	const transactionsData = ref<any[]>([])
 
 	function loadTransactions() {
-		const stored = uni.getStorageSync('transactions') as string | null
-		if (stored) {
-			transactionsData.value = JSON.parse(stored) as any[]
-		} else {
-			transactionsData.value = [
-				{ id: '1', type: 'expense', amount: 84.20, category: '餐饮', description: '超市购物', date: '2026-03-19', iconText: '🛒', iconBg: '#ffedd5', iconColor: '#ea580c' },
-				{ id: '5', type: 'expense', amount: 26.50, category: '餐饮', description: '早餐', date: '2026-03-20', iconText: '🧋', iconBg: '#ffedd5', iconColor: '#ea580c' },
-				{ id: '6', type: 'expense', amount: 18.00, category: '交通', description: '地铁', date: '2026-03-20', iconText: '🚇', iconBg: '#dbeafe', iconColor: '#2563eb' },
-				{ id: '7', type: 'expense', amount: 129.90, category: '购物', description: '日用品', date: '2026-03-19', iconText: '🧺', iconBg: '#e0f2fe', iconColor: '#0284c7' },
-				{ id: '8', type: 'income', amount: 220, category: '兼职', description: '设计接单', date: '2026-03-19', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
-				{ id: '9', type: 'expense', amount: 58.00, category: '餐饮', description: '晚餐', date: '2026-03-18', iconText: '🍜', iconBg: '#ffedd5', iconColor: '#ea580c' },
-				{ id: '2', type: 'income', amount: 5000, category: '工资', description: '月薪', date: '2026-03-15', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
-				{ id: '10', type: 'expense', amount: 199.00, category: '购物', description: '衣物', date: '2026-03-16', iconText: '👕', iconBg: '#e0f2fe', iconColor: '#0284c7' },
-				{ id: '11', type: 'expense', amount: 12.00, category: '其他', description: '停车费', date: '2026-03-16', iconText: '🅿️', iconBg: '#f1f5f9', iconColor: '#64748b' },
-				{ id: '12', type: 'expense', amount: 66.00, category: '餐饮', description: '聚餐AA', date: '2026-03-14', iconText: '🍲', iconBg: '#ffedd5', iconColor: '#ea580c' },
-				{ id: '13', type: 'income', amount: 88.00, category: '红包', description: '家庭红包', date: '2026-03-13', iconText: '🧧', iconBg: '#dcfce7', iconColor: '#16a34a' },
-				{ id: '3', type: 'expense', amount: 35, category: '交通', description: '打车', date: '2026-03-18', iconText: '🚗', iconBg: '#dbeafe', iconColor: '#2563eb' },
-				{ id: '14', type: 'expense', amount: 39.90, category: '其他', description: '会员订阅', date: '2026-03-12', iconText: '🎫', iconBg: '#f1f5f9', iconColor: '#64748b' },
-				{ id: '15', type: 'expense', amount: 168.00, category: '健康', description: '体检预约', date: '2026-03-10', iconText: '🩺', iconBg: '#fee2e2', iconColor: '#dc2626' },
-				{ id: '16', type: 'expense', amount: 420.00, category: '水电', description: '水电燃气', date: '2026-03-05', iconText: '💡', iconBg: '#fef9c3', iconColor: '#ca8a04' },
-				{ id: '4', type: 'expense', amount: 2000, category: '房租', description: '房租', date: '2026-03-01', iconText: '🏠', iconBg: '#f3e8ff', iconColor: '#9333ea' }
-			]
-		}
+		seedTransactionsIfEmpty()
+		transactionsData.value = getTransactions() as any[]
 	}
 
 	const income = computed(() => {
@@ -253,6 +233,10 @@
 
 	function goToAdd() {
 		uni.navigateTo({ url: '/pages/add-transaction/add-transaction' })
+	}
+	
+	function goToTransactionDetail(id: string) {
+		uni.navigateTo({ url: `/pages/transaction-detail/transaction-detail?id=${id}` })
 	}
 
 	function goToStats() {

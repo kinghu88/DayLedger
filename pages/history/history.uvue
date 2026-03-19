@@ -4,21 +4,27 @@
 			<view class="header-row">
 				<text class="header-title">历史明细</text>
 				<view class="header-icon">
-					<text>👤</text>
+					<svg class="header-icon-svg" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+					</svg>
 				</view>
 			</view>
 			<view class="search-section">
 				<view class="search-box">
-					<text class="search-icon">🔍</text>
+					<svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					</svg>
 					<input class="search-input" type="text" v-model="searchKeyword" placeholder="搜索交易..." />
 				</view>
 				<view class="filter-btn">
-					<text class="filter-icon">⏷</text>
+					<svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					</svg>
 				</view>
 			</view>
 		</header>
 
-		<scroll-view class="content" scroll-y="true">
+		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
 			<view v-if="groupedTransactions.length === 0" class="empty-state">
 				<text>暂无交易记录</text>
 			</view>
@@ -26,18 +32,35 @@
 			<view v-for="group in groupedTransactions" :key="group.date" class="date-group">
 				<text class="date-label">{{ group.label }}</text>
 				<view class="transactions-list">
-					<view v-for="item in group.items" :key="item.id" class="transaction-item">
+					<view v-for="item in group.items" :key="item.id" class="transaction-item" @click="goToTransactionDetail(item.id)">
 						<view class="transaction-left">
-							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg }">
-								<text :style="{ color: item.iconColor }">{{ item.iconText }}</text>
+							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
+								<svg v-if="item.iconKind === 'book'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'cash'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'swap'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'bag'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'bolt'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<view class="transaction-info">
 								<text class="transaction-title">{{ item.description }}</text>
 								<text class="transaction-sub">{{ item.category }} • {{ item.note || '' }}</text>
 							</view>
 						</view>
-						<text class="transaction-amount" :style="{ color: item.type === 'income' ? '#16a34a' : '#dc2626' }">
-							{{ item.type === 'income' ? '+' : '-' }}${{ Number(item.amount).toFixed(2) }}
+						<text class="transaction-amount" :class="{ income: item.type === 'income', expense: item.type !== 'income' }">
+							{{ item.type === 'income' ? '+' : '-' }}${{ formatMoney(Number(item.amount), 2) }}
 						</text>
 					</view>
 				</view>
@@ -87,37 +110,35 @@
 
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
+	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
 
 	const searchKeyword = ref<string>('')
 
 	const transactionsData = ref<any[]>([])
 
 	function loadTransactions() {
-		const stored = uni.getStorageSync('transactions') as string | null
-		if (stored) {
-			transactionsData.value = JSON.parse(stored) as any[]
-		} else {
-			transactionsData.value = []
-		}
+		seedTransactionsIfEmpty()
+		transactionsData.value = getTransactions() as any[]
 	}
 
 	onShow(() => {
 		loadTransactions()
 	})
 
-	const categoryMap: Record<string, any> = {
-		'餐饮': { iconText: '🍔', iconBg: '#ffedd5', iconColor: '#ea580c' },
-		'购物': { iconText: '🛍️', iconBg: '#dbeafe', iconColor: '#2563eb' },
-		'旅行': { iconText: '✈️', iconBg: '#dcfce7', iconColor: '#16a34a' },
-		'账单': { iconText: '📄', iconBg: '#f3e8ff', iconColor: '#9333ea' },
-		'医疗': { iconText: '🏥', iconBg: '#fee2e2', iconColor: '#dc2626' },
-		'娱乐': { iconText: '🎭', iconBg: '#fef3c7', iconColor: '#ca8a04' },
-		'学习': { iconText: '📚', iconBg: '#e0e7ff', iconColor: '#4f46e5' },
-		'其他': { iconText: '➕', iconBg: '#f1f5f9', iconColor: '#64748b' },
-		'工资': { iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
-		'收入': { iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
-		'房租': { iconText: '🏠', iconBg: '#f3e8ff', iconColor: '#9333ea' },
-		'交通': { iconText: '🚗', iconBg: '#dbeafe', iconColor: '#2563eb' }
+	function formatMoney(value: number, digits: number): string {
+		const fixed = Number(value).toFixed(digits)
+		const parts = fixed.split('.')
+		const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+		return `$${withCommas}.${parts[1]}`
+	}
+
+	function categoryMeta(category: string, type: string): any {
+		if (type === 'income') return { iconKind: 'cash', iconBg: '#dcfce7', iconColor: '#16a34a' }
+		if (category.includes('餐') || category.includes('饮')) return { iconKind: 'book', iconBg: '#ffedd5', iconColor: '#ea580c' }
+		if (category.includes('交') || category.includes('通')) return { iconKind: 'swap', iconBg: '#dbeafe', iconColor: '#2563eb' }
+		if (category.includes('购')) return { iconKind: 'bag', iconBg: '#f3e8ff', iconColor: '#9333ea' }
+		if (category.includes('电') || category.includes('水') || category.includes('账') || category.includes('费')) return { iconKind: 'bolt', iconBg: '#fef3c7', iconColor: '#ca8a04' }
+		return { iconKind: 'info', iconBg: '#f1f5f9', iconColor: '#64748b' }
 	}
 
 	const filteredTransactions = computed(() => {
@@ -137,10 +158,10 @@
 			if (!groups[t.date]) {
 				groups[t.date] = []
 			}
-			const catInfo = categoryMap[t.category] || { iconText: '❓', iconBg: '#f1f5f9', iconColor: '#64748b' }
+			const catInfo = categoryMeta(String(t.category || ''), String(t.type || 'expense'))
 			groups[t.date].push({
 				...t,
-				iconText: t.iconText || catInfo.iconText,
+				iconKind: t.iconKind || catInfo.iconKind,
 				iconBg: t.iconBg || catInfo.iconBg,
 				iconColor: t.iconColor || catInfo.iconColor
 			})
@@ -182,6 +203,10 @@
 	function goToAdd() {
 		uni.navigateTo({ url: '/pages/add-transaction/add-transaction' })
 	}
+	
+	function goToTransactionDetail(id: string) {
+		uni.navigateTo({ url: `/pages/transaction-detail/transaction-detail?id=${id}` })
+	}
 
 	function goToStats() {
 		uni.reLaunch({ url: '/pages/stats/stats' })
@@ -203,7 +228,10 @@
 
 	.header {
 		background-color: #ffffff;
-		padding: 24px 16px 16px;
+		padding-left: 16px;
+		padding-right: 16px;
+		padding-top: 24px;
+		padding-bottom: 16px;
 		position: sticky;
 		top: 0;
 		z-index: 30;
@@ -231,10 +259,12 @@
 		background-color: #e7eefa;
 		align-items: center;
 		justify-content: center;
+		color: #1152d4;
 	}
-
-	.header-icon text {
-		font-size: 16px;
+	
+	.header-icon-svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.search-section {
@@ -254,7 +284,9 @@
 	}
 
 	.search-icon {
-		font-size: 16px;
+		width: 20px;
+		height: 20px;
+		color: #9ca3af;
 		margin-right: 8px;
 	}
 
@@ -279,13 +311,22 @@
 	}
 
 	.filter-icon {
-		font-size: 16px;
-		color: #475569;
+		width: 20px;
+		height: 20px;
+		color: #4b5563;
 	}
 
 	.content {
 		flex: 1;
-		padding: 0 16px 100px;
+		padding-left: 16px;
+		padding-right: 16px;
+		padding-bottom: 96px;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	
+	.content::-webkit-scrollbar {
+		display: none;
 	}
 
 	.empty-state {
@@ -307,6 +348,7 @@
 		font-weight: 600;
 		color: #64748b;
 		text-transform: uppercase;
+		letter-spacing: 1px;
 		margin-bottom: 12px;
 	}
 
@@ -322,7 +364,7 @@
 		background-color: #ffffff;
 		border-radius: 8px;
 		border-width: 1px;
-		border-color: #f3f4f6;
+		border-color: #f9fafb;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 		margin-bottom: 12px;
 	}
@@ -344,9 +386,10 @@
 		justify-content: center;
 		margin-right: 12px;
 	}
-
-	.transaction-icon text {
-		font-size: 20px;
+	
+	.tx-icon {
+		width: 24px;
+		height: 24px;
 	}
 
 	.transaction-info {
@@ -369,6 +412,14 @@
 		font-size: 14px;
 		font-weight: bold;
 	}
+	
+	.transaction-amount.income {
+		color: #16a34a;
+	}
+	
+	.transaction-amount.expense {
+		color: #ef4444;
+	}
 
 	.tab-bar {
 		position: fixed;
@@ -379,14 +430,14 @@
 		background-color: #ffffff;
 		border-top-width: 1px;
 		border-top-color: #e5e7eb;
-		box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+		box-shadow: none;
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: 12px;
+		padding-bottom: calc(12px + env(safe-area-inset-bottom));
 		z-index: 40;
 		overflow: visible;
 	}

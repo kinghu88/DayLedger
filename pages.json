@@ -15,6 +15,13 @@
 			}
 		},
 		{
+			"path": "pages/transaction-detail/transaction-detail",
+			"style": {
+				"navigationBarTitleText": "账目详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/history/history",
 			"style": {
 				"navigationBarTitleText": "历史明细",

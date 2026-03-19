@@ -6,10 +6,10 @@
 					<path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 				</svg>
 			</view>
-			<text class="header-title">记一笔</text>
+			<text class="header-title">账目详情</text>
 			<view class="header-spacer"></view>
 		</header>
-
+		
 		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
 			<view class="amount-section">
 				<text class="amount-label">输入金额</text>
@@ -18,18 +18,14 @@
 					<input class="amount-input" type="number" v-model="amount" placeholder="0.00" :focus="true" />
 				</view>
 			</view>
-
+			
 			<view class="type-section">
 				<view class="type-toggle">
-					<view class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'">
-						<text>支出</text>
-					</view>
-					<view class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'">
-						<text>收入</text>
-					</view>
+					<view class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'"><text>支出</text></view>
+					<view class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'"><text>收入</text></view>
 				</view>
 			</view>
-
+			
 			<view class="category-section">
 				<text class="section-title">分类</text>
 				<view class="category-grid">
@@ -65,7 +61,7 @@
 					</view>
 				</view>
 			</view>
-
+			
 			<view class="details-section">
 				<view class="detail-item" @click="openDateSheet">
 					<svg class="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,9 +83,9 @@
 				</view>
 			</view>
 		</scroll-view>
-
+		
 		<view class="save-section">
-			<text class="save-btn" @click="saveTransaction">保存账目</text>
+			<text class="save-btn" @click="saveTransaction">保存修改</text>
 		</view>
 		
 		<view v-if="isDateSheetOpen" class="date-mask" @click="cancelDateSheet"></view>
@@ -101,19 +97,13 @@
 			</view>
 			<picker-view class="date-picker" indicator-style="height: 44px;" :value="datePickerIndex" @change="onDatePickerChange">
 				<picker-view-column>
-					<view v-for="y in years" :key="y" class="date-picker-item">
-						<text>{{ y }}年</text>
-					</view>
+					<view v-for="y in years" :key="y" class="date-picker-item"><text>{{ y }}年</text></view>
 				</picker-view-column>
 				<picker-view-column>
-					<view v-for="m in months" :key="m" class="date-picker-item">
-						<text>{{ m }}月</text>
-					</view>
+					<view v-for="m in months" :key="m" class="date-picker-item"><text>{{ m }}月</text></view>
 				</picker-view-column>
 				<picker-view-column>
-					<view v-for="d in days" :key="d" class="date-picker-item">
-						<text>{{ d }}日</text>
-					</view>
+					<view v-for="d in days" :key="d" class="date-picker-item"><text>{{ d }}日</text></view>
 				</picker-view-column>
 			</picker-view>
 		</view>
@@ -155,19 +145,23 @@
 
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
-	import { addTransaction, seedTransactionsIfEmpty } from '../../services/transactions'
-
+	import { seedTransactionsIfEmpty, getTransactionById, updateTransactionById } from '../../services/transactions'
+	
+	const transactionId = ref<string>('')
+	const originalTransaction = ref<any | null>(null)
+	
 	const amount = ref<string>('')
 	const type = ref<string>('expense')
 	const selectedCategory = ref<string>('food')
 	const selectedMoreCategory = ref<string>('')
 	const date = ref<string>('')
 	const note = ref<string>('')
+	
 	const isDateSheetOpen = ref<boolean>(false)
 	const isCategorySheetOpen = ref<boolean>(false)
 	const datePickerIndex = ref<number[]>([0, 0, 0])
 	const datePickerIndexBackup = ref<number[]>([0, 0, 0])
-
+	
 	const categories: any[] = [
 		{ key: 'food', name: '餐饮', bg: '#ffedd5', color: '#ea580c' },
 		{ key: 'shopping', name: '购物', bg: '#dbeafe', color: '#2563eb' },
@@ -189,22 +183,16 @@
 		{ key: 'subscription', name: '订阅', bg: '#f1f5f9', color: '#64748b', iconKind: 'info' },
 		{ key: 'health2', name: '健康', bg: '#fee2e2', color: '#dc2626', iconKind: 'info' }
 	]
-
-	date.value = '2023-10-27'
 	
 	const years = (() => {
 		const list: number[] = []
-		for (let y = 2000; y <= 2035; y++) {
-			list.push(y)
-		}
+		for (let y = 2000; y <= 2035; y++) list.push(y)
 		return list
 	})()
 	
 	const months = (() => {
 		const list: number[] = []
-		for (let m = 1; m <= 12; m++) {
-			list.push(m)
-		}
+		for (let m = 1; m <= 12; m++) list.push(m)
 		return list
 	})()
 	
@@ -221,9 +209,7 @@
 		const month = months[datePickerIndex.value[1]] ?? months[0]
 		const max = daysInMonth(year, month)
 		const list: number[] = []
-		for (let d = 1; d <= max; d++) {
-			list.push(d)
-		}
+		for (let d = 1; d <= max; d++) list.push(d)
 		return list
 	})
 	
@@ -236,9 +222,43 @@
 		if (!y || !m || !d) return null
 		return [y, m, d]
 	}
-
+	
+	function categoryKeyFromName(name: string): string {
+		const found = [...categories.filter((c: any) => c.key !== 'other'), ...moreCategories].find((c: any) => c.name === name)
+		return found ? String(found.key) : 'other'
+	}
+	
+	function setSelectedCategoryKey(key: string) {
+		const isBase = categories.some((c: any) => c.key === key && c.key !== 'other')
+		if (isBase) {
+			selectedCategory.value = key
+			selectedMoreCategory.value = ''
+			return
+		}
+		const isMore = moreCategories.some((c: any) => c.key === key)
+		if (isMore) {
+			selectedCategory.value = 'other'
+			selectedMoreCategory.value = key
+			return
+		}
+		selectedCategory.value = 'other'
+		selectedMoreCategory.value = ''
+	}
+	
 	function goBack() {
 		uni.navigateBack()
+	}
+	
+	function openDateSheet() {
+		const parts = parseDateParts(date.value) ?? [new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()]
+		const yearIdx = Math.max(0, years.indexOf(parts[0]))
+		const monthIdx = Math.max(0, months.indexOf(parts[1]))
+		const maxDay = daysInMonth(years[yearIdx] ?? years[0], months[monthIdx] ?? months[0])
+		const day = Math.min(parts[2], maxDay)
+		const dayIdx = Math.max(0, day - 1)
+		datePickerIndex.value = [yearIdx, monthIdx, dayIdx]
+		datePickerIndexBackup.value = [yearIdx, monthIdx, dayIdx]
+		isDateSheetOpen.value = true
 	}
 	
 	function onCategoryTileClick(key: string) {
@@ -266,18 +286,6 @@
 		isCategorySheetOpen.value = false
 	}
 	
-	function openDateSheet() {
-		const parts = parseDateParts(date.value) ?? [new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()]
-		const yearIdx = Math.max(0, years.indexOf(parts[0]))
-		const monthIdx = Math.max(0, months.indexOf(parts[1]))
-		const maxDay = daysInMonth(years[yearIdx] ?? years[0], months[monthIdx] ?? months[0])
-		const day = Math.min(parts[2], maxDay)
-		const dayIdx = Math.max(0, day - 1)
-		datePickerIndex.value = [yearIdx, monthIdx, dayIdx]
-		datePickerIndexBackup.value = [yearIdx, monthIdx, dayIdx]
-		isDateSheetOpen.value = true
-	}
-	
 	function cancelDateSheet() {
 		datePickerIndex.value = [...datePickerIndexBackup.value]
 		isDateSheetOpen.value = false
@@ -303,42 +311,75 @@
 		if (dayIdx > max - 1) dayIdx = max - 1
 		datePickerIndex.value = [yearIdx, monthIdx, dayIdx]
 	}
-
-	function saveTransaction() {
-		const amountNum = Number(amount.value)
+	
+	function loadTransaction() {
+		seedTransactionsIfEmpty()
+		const tx = getTransactionById(transactionId.value) as any | null
+		if (!tx) return
 		
+		originalTransaction.value = tx
+		type.value = String(tx.type || 'expense')
+		amount.value = String(tx.amount ?? '')
+		date.value = String(tx.date || new Date().toISOString().split('T')[0])
+		note.value = String(tx.note || tx.description || '')
+		setSelectedCategoryKey(categoryKeyFromName(String(tx.category || '其他')))
+	}
+	
+	onLoad((options: any) => {
+		transactionId.value = String(options?.id || '')
+		if (!transactionId.value) {
+			uni.showToast({ title: '缺少账目ID', icon: 'none' })
+			setTimeout(() => goBack(), 300)
+			return
+		}
+		loadTransaction()
+		if (!originalTransaction.value) {
+			uni.showToast({ title: '账目不存在', icon: 'none' })
+			setTimeout(() => goBack(), 300)
+		}
+	})
+	
+	onShow(() => {
+		if (!transactionId.value) return
+		loadTransaction()
+	})
+	
+	function saveTransaction() {
+		if (!originalTransaction.value) return
+		
+		const amountNum = Number(amount.value)
 		if (!amountNum || amountNum <= 0) {
 			uni.showToast({ title: '请输入有效金额', icon: 'none' })
 			return
 		}
-
+		
 		const selectedKey = selectedCategory.value === 'other' ? (selectedMoreCategory.value || 'other') : selectedCategory.value
 		const selected = [...categories.filter((c: any) => c.key !== 'other'), ...moreCategories].find((c: any) => c.key === selectedKey)
 		const categoryName = selected ? String(selected.name) : '其他'
 		const iconBg = type.value === 'income' ? '#dcfce7' : (selected ? String(selected.bg) : '#f1f5f9')
 		const iconColor = type.value === 'income' ? '#16a34a' : (selected ? String(selected.color) : '#64748b')
-
-		const transaction = {
-			id: Date.now().toString(),
+		
+		const updated = {
+			...originalTransaction.value,
 			type: type.value,
 			amount: amountNum,
 			category: categoryName,
-			description: note.value || `新${type.value === 'income' ? '收入' : '支出'}`,
-			note: note.value,
 			date: date.value,
-			iconText: type.value === 'income' ? '💰' : '💸',
+			note: note.value,
+			description: note.value || originalTransaction.value.description || `新${type.value === 'income' ? '收入' : '支出'}`,
+			iconText: type.value === 'income' ? '💰' : (originalTransaction.value.iconText || '💸'),
 			iconBg,
 			iconColor
 		}
+	
+		const saved = updateTransactionById(transactionId.value, () => updated) as any | null
+		if (!saved) {
+			uni.showToast({ title: '账目不存在', icon: 'none' })
+			return
+		}
 		
-		seedTransactionsIfEmpty()
-		addTransaction(transaction)
-
-		uni.showToast({ title: '保存成功', icon: 'success' })
-
-		setTimeout(() => {
-			uni.navigateBack()
-		}, 1000)
+		uni.showToast({ title: '已保存', icon: 'success' })
+		setTimeout(() => goBack(), 500)
 	}
 </script>
 
@@ -350,7 +391,7 @@
 		background-color: #ffffff;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
-
+	
 	.header {
 		flex-direction: row;
 		justify-content: space-between;
@@ -366,7 +407,7 @@
 		background-color: #ffffff;
 		z-index: 10;
 	}
-
+	
 	.back-btn {
 		width: 40px;
 		height: 40px;
@@ -382,17 +423,17 @@
 		width: 24px;
 		height: 24px;
 	}
-
+	
 	.header-title {
 		font-size: 18px;
 		font-weight: 600;
 		color: #0f172a;
 	}
-
+	
 	.header-spacer {
 		width: 40px;
 	}
-
+	
 	.content {
 		flex: 1;
 		padding-left: 24px;
@@ -407,34 +448,34 @@
 		height: 0;
 		display: none;
 	}
-
+	
 	.amount-section {
 		align-items: center;
 		padding-top: 32px;
 		padding-bottom: 32px;
 	}
-
+	
 	.amount-label {
 		font-size: 14px;
 		font-weight: 500;
 		color: #64748b;
 		margin-bottom: 4px;
 	}
-
+	
 	.amount-row {
 		flex-direction: row;
 		align-items: center;
 		justify-content: center;
 		width: 100%;
 	}
-
+	
 	.currency {
 		font-size: 40px;
 		font-weight: bold;
 		color: #1152d4;
 		margin-right: 4px;
 	}
-
+	
 	.amount-input {
 		font-size: 48px;
 		font-weight: bold;
@@ -444,18 +485,18 @@
 		border: none;
 		outline: none;
 	}
-
+	
 	.type-section {
 		margin-bottom: 32px;
 	}
-
+	
 	.type-toggle {
 		flex-direction: row;
 		background-color: #f1f5f9;
 		border-radius: 8px;
 		padding: 4px;
 	}
-
+	
 	.type-btn {
 		flex: 1;
 		padding-top: 8px;
@@ -471,17 +512,17 @@
 		font-size: 14px;
 		font-weight: 600;
 	}
-
+	
 	.type-btn.active {
 		background-color: #ffffff;
 		color: #1152d4;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	}
-
+	
 	.category-section {
 		margin-bottom: 32px;
 	}
-
+	
 	.section-title {
 		font-size: 12px;
 		font-weight: bold;
@@ -490,13 +531,13 @@
 		margin-bottom: 16px;
 		letter-spacing: 0.8px;
 	}
-
+	
 	.category-grid {
 		flex-direction: row;
 		flex-wrap: wrap;
 		overflow: visible;
 	}
-
+	
 	.category-item {
 		width: 25%;
 		align-items: center;
@@ -507,7 +548,7 @@
 		margin-bottom: 16px;
 		overflow: visible;
 	}
-
+	
 	.category-icon {
 		width: 48px;
 		height: 48px;
@@ -522,61 +563,61 @@
 		transition-duration: 120ms;
 		transition-timing-function: ease;
 	}
-
+	
 	.category-icon.dashed {
 		border-style: dashed;
 		border-color: #e2e8f0;
 	}
-
+	
 	.category-icon.selected {
 		border-color: #1152d4;
 		box-shadow: 0 0 0 3px rgba(17, 82, 212, 0.15);
 		transform: scale(1.02);
 	}
 	
-	.category-item.selected .category-name {
-		color: #1152d4;
-		font-weight: 600;
-	}
-
 	.category-svg {
 		width: 24px;
 		height: 24px;
 	}
-
+	
 	.category-name {
 		font-size: 12px;
 		font-weight: 500;
 		color: #475569;
 	}
-
+	
+	.category-item.selected .category-name {
+		color: #1152d4;
+		font-weight: 600;
+	}
+	
 	.details-section {
 		margin-bottom: 40px;
 	}
-
+	
 	.detail-item {
 		flex-direction: row;
 		align-items: center;
 		padding: 12px;
-		background-color: #f8fafb;
+		background-color: #f8fafc;
 		border-radius: 8px;
 		border-width: 1px;
 		border-color: #f1f5f9;
 		margin-bottom: 16px;
 	}
-
+	
 	.detail-icon {
 		width: 20px;
 		height: 20px;
 		color: #94a3b8;
 		margin-right: 12px;
 	}
-
+	
 	.detail-content {
 		flex: 1;
 		flex-direction: column;
 	}
-
+	
 	.detail-label {
 		font-size: 10px;
 		font-weight: bold;
@@ -585,7 +626,7 @@
 		margin-bottom: 4px;
 		letter-spacing: 0.8px;
 	}
-
+	
 	.detail-input {
 		font-size: 14px;
 		font-weight: 500;
@@ -600,6 +641,29 @@
 		font-size: 14px;
 		font-weight: 500;
 		color: #334155;
+	}
+	
+	.save-section {
+		padding-left: 24px;
+		padding-right: 24px;
+		padding-top: 16px;
+		padding-bottom: calc(16px + env(safe-area-inset-bottom));
+		border-top-width: 1px;
+		border-top-color: #f1f5f9;
+		background-color: #ffffff;
+	}
+	
+	.save-btn {
+		width: 100%;
+		background-color: #1152d4;
+		color: #ffffff;
+		font-size: 18px;
+		font-weight: bold;
+		text-align: center;
+		padding-top: 16px;
+		padding-bottom: 16px;
+		border-radius: 8px;
+		box-shadow: 0 12px 24px rgba(17, 82, 212, 0.2);
 	}
 	
 	.date-mask {
@@ -760,27 +824,5 @@
 		font-size: 12px;
 		font-weight: 500;
 		color: #475569;
-	}
-
-	.save-section {
-		padding-left: 24px;
-		padding-right: 24px;
-		padding-top: 16px;
-		padding-bottom: calc(16px + env(safe-area-inset-bottom));
-		border-top-width: 1px;
-		border-top-color: #f1f5f9;
-	}
-
-	.save-btn {
-		width: 100%;
-		background-color: #1152d4;
-		color: #ffffff;
-		font-size: 18px;
-		font-weight: bold;
-		text-align: center;
-		padding-top: 16px;
-		padding-bottom: 16px;
-		border-radius: 8px;
-		box-shadow: 0 12px 24px rgba(17, 82, 212, 0.2);
 	}
 </style>

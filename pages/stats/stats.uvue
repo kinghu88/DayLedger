@@ -4,22 +4,24 @@
 			<view class="header-top">
 				<text class="header-title">收支统计</text>
 				<view class="header-icon">
-					<text>🔔</text>
+					<svg class="header-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					</svg>
 				</view>
 			</view>
 			<view class="period-toggle">
-				<text class="period-btn" :class="{ active: period === 'week' }" @click="period = 'week'">周</text>
-				<text class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'">月</text>
-				<text class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'">年</text>
+				<view class="period-btn" :class="{ active: period === 'week' }" @click="period = 'week'"><text>周</text></view>
+				<view class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'"><text>月</text></view>
+				<view class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'"><text>年</text></view>
 			</view>
-			<scroll-view class="month-scroll" scroll-x="true">
+			<scroll-view class="month-scroll" scroll-x="true" :show-scrollbar="false">
 				<view class="month-list">
 					<text v-for="m in months" :key="m" class="month-btn" :class="{ active: m === '本月', disabled: m === '6月' }">{{ m }}</text>
 				</view>
 			</scroll-view>
 		</header>
 
-		<scroll-view class="content" scroll-y="true">
+		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
 			<view class="section">
 				<view class="section-header">
 					<text class="section-title">{{ chartTitle }}</text>
@@ -39,33 +41,44 @@
 				<view class="budget-header">
 					<view class="budget-info">
 						<text class="section-title">本月预算</text>
-						<text class="budget-used">{{ budgetPercent }}% of ${{ budgetAmount }} 已用</text>
+						<text class="budget-used">{{ budgetPercent }}% of ${{ formatMoney(budgetAmount, 0) }} 已用</text>
 					</view>
-					<text class="budget-value">${{ totalExpense.toFixed(2) }}</text>
+					<text class="budget-value">${{ formatMoney(totalExpense, 2) }}</text>
 				</view>
 				<view class="progress-bar">
 					<view class="progress-fill" :style="{ width: Math.min(budgetPercent, 100) + '%' }"></view>
 				</view>
-				<text class="budget-remaining">剩余 ${{ Math.max(budgetAmount - totalExpense, 0).toFixed(2) }}</text>
+				<text class="budget-remaining">剩余 ${{ formatMoney(Math.max(budgetAmount - totalExpense, 0), 0) }}</text>
 			</view>
 
-			<view class="section">
-				<text class="section-title-main">本月主要支出</text>
+			<view class="category-section">
+				<text class="category-section-title">本月主要支出</text>
 				<view class="category-list">
 					<view v-if="categoryStats.length === 0" class="empty-state">
 						<text>本月暂无支出记录</text>
 					</view>
 					<view v-for="cat in categoryStats" :key="cat.name" class="category-item">
 						<view class="category-left">
-							<view class="category-icon" :style="{ backgroundColor: cat.bg }">
-								<text :style="{ color: cat.color }">{{ cat.icon }}</text>
+							<view class="category-icon" :style="{ backgroundColor: cat.bg, color: cat.color }">
+								<svg v-if="cat.iconKind === 'cart'" class="category-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="cat.iconKind === 'plane'" class="category-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="cat.iconKind === 'smile'" class="category-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else class="category-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
 							</view>
 							<view class="category-info">
 								<text class="category-name">{{ cat.name }}</text>
 								<text class="category-percent">占比 {{ cat.percent }}%</text>
 							</view>
 						</view>
-						<text class="category-amount">${{ cat.amount.toFixed(2) }}</text>
+						<text class="category-amount">${{ formatMoney(cat.amount, 2) }}</text>
 					</view>
 				</view>
 			</view>
@@ -114,6 +127,7 @@
 
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
+	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
 
 	const period = ref<string>('month')
 
@@ -122,12 +136,8 @@
 	const transactionsData = ref<any[]>([])
 
 	function loadTransactions() {
-		const stored = uni.getStorageSync('transactions') as string | null
-		if (stored) {
-			transactionsData.value = JSON.parse(stored) as any[]
-		} else {
-			transactionsData.value = []
-		}
+		seedTransactionsIfEmpty()
+		transactionsData.value = getTransactions() as any[]
 	}
 
 	onShow(() => {
@@ -156,6 +166,13 @@
 	})
 
 	const budgetAmount = 2000
+	
+	function formatMoney(value: number, digits: number): string {
+		const fixed = Number(value).toFixed(digits)
+		const parts = fixed.split('.')
+		const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+		return parts.length > 1 ? `${withCommas}.${parts[1]}` : withCommas
+	}
 
 	const totalExpense = computed(() => {
 		return transactionsData.value
@@ -167,17 +184,11 @@
 		return Math.round((totalExpense.value / budgetAmount) * 100)
 	})
 
-	const categoryMap: Record<string, any> = {
-		'餐饮': { icon: '🍔', bg: '#ffedd5', color: '#ea580c' },
-		'购物': { icon: '🛍️', bg: '#dbeafe', color: '#2563eb' },
-		'旅行': { icon: '✈️', bg: '#dcfce7', color: '#16a34a' },
-		'账单': { icon: '📄', bg: '#f3e8ff', color: '#9333ea' },
-		'医疗': { icon: '🏥', bg: '#fee2e2', color: '#dc2626' },
-		'娱乐': { icon: '🎭', bg: '#fef3c7', color: '#ca8a04' },
-		'学习': { icon: '📚', bg: '#e0e7ff', color: '#4f46e5' },
-		'其他': { icon: '➕', bg: '#f1f5f9', color: '#64748b' },
-		'房租': { icon: '🏠', bg: '#f3e8ff', color: '#9333ea' },
-		'交通': { icon: '🚗', bg: '#dbeafe', color: '#2563eb' }
+	function categoryMeta(name: string): any {
+		if (name === '购物') return { iconKind: 'cart', bg: '#ffedd5', color: '#ea580c' }
+		if (name === '交通') return { iconKind: 'plane', bg: '#dcfce7', color: '#16a34a' }
+		if (name === '娱乐') return { iconKind: 'smile', bg: '#f3e8ff', color: '#9333ea' }
+		return { iconKind: 'info', bg: '#f1f5f9', color: '#64748b' }
 	}
 
 	const categoryStats = computed(() => {
@@ -198,7 +209,7 @@
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 3)
 			.map(([name, amount]) => {
-				const catInfo = categoryMap[name] || { icon: '❓', bg: '#f1f5f9', color: '#64748b' }
+				const catInfo = categoryMeta(name)
 				return {
 					name,
 					amount,
@@ -232,7 +243,7 @@
 		display: flex;
 		flex-direction: column;
 		height: 100vh;
-		background-color: #f3f4f6;
+		background-color: #f9fafb;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
 
@@ -262,12 +273,15 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
+		background-color: transparent;
 		align-items: center;
 		justify-content: center;
+		color: #4b5563;
 	}
-
-	.header-icon text {
-		font-size: 20px;
+	
+	.header-icon-svg {
+		width: 24px;
+		height: 24px;
 	}
 
 	.period-toggle {
@@ -280,23 +294,38 @@
 
 	.period-btn {
 		flex: 1;
-		text-align: center;
-		padding: 8px;
+		padding-top: 8px;
+		padding-bottom: 8px;
 		border-radius: 8px;
+		color: #64748b;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+	}
+	
+	.period-btn text {
 		font-size: 14px;
 		font-weight: 500;
-		color: #64748b;
 	}
 
 	.period-btn.active {
 		background-color: #ffffff;
 		color: #1152d4;
-		font-weight: 600;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+	
+	.period-btn.active text {
+		font-weight: 600;
 	}
 
 	.month-scroll {
 		width: 100%;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	
+	.month-scroll::-webkit-scrollbar {
+		display: none;
 	}
 
 	.month-list {
@@ -327,6 +356,12 @@
 		flex: 1;
 		padding: 16px;
 		padding-bottom: 100px;
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	
+	.content::-webkit-scrollbar {
+		display: none;
 	}
 
 	.section {
@@ -348,13 +383,6 @@
 		font-size: 16px;
 		font-weight: 600;
 		color: #374151;
-	}
-
-	.section-title-main {
-		font-size: 16px;
-		font-weight: 600;
-		color: #374151;
-		margin-bottom: 16px;
 	}
 
 	.section-period {
@@ -437,10 +465,23 @@
 		margin-top: 8px;
 	}
 
-	.category-list {
-		margin-top: 12px;
+	.category-section {
+		margin-bottom: 16px;
 	}
-
+	
+	.category-section-title {
+		font-size: 16px;
+		font-weight: 600;
+		color: #374151;
+		padding-left: 4px;
+		padding-right: 4px;
+		margin-bottom: 12px;
+	}
+	
+	.category-list {
+		flex-direction: column;
+	}
+	
 	.category-item {
 		flex-direction: row;
 		justify-content: space-between;
@@ -469,9 +510,10 @@
 		justify-content: center;
 		margin-right: 16px;
 	}
-
-	.category-icon text {
-		font-size: 20px;
+	
+	.category-icon-svg {
+		width: 20px;
+		height: 20px;
 	}
 
 	.category-info {
@@ -515,14 +557,14 @@
 		background-color: #ffffff;
 		border-top-width: 1px;
 		border-top-color: #e5e7eb;
-		box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+		box-shadow: none;
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: 12px;
+		padding-bottom: calc(12px + env(safe-area-inset-bottom));
 		z-index: 40;
 		overflow: visible;
 	}
