@@ -1,0 +1,348 @@
+<template>
+	<view class="page">
+		<header class="header">
+			<text class="back-btn" @click="goBack">←</text>
+			<text class="header-title">记一笔</text>
+			<view class="placeholder"></view>
+		</header>
+
+		<scroll-view class="content" scroll-y="true">
+			<view class="amount-section">
+				<text class="amount-label">输入金额</text>
+				<view class="amount-input">
+					<text class="currency">$</text>
+					<input class="amount-field" type="number" v-model="amount" placeholder="0.00" />
+				</view>
+			</view>
+
+			<view class="type-section">
+				<view class="type-toggle">
+					<text class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'">支出</text>
+					<text class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'">收入</text>
+				</view>
+			</view>
+
+			<view class="category-section">
+				<text class="section-label">分类</text>
+				<view class="category-grid">
+					<view v-for="cat in categories" :key="cat.name" 
+						class="category-item" 
+						:class="{ selected: selectedCategory === cat.name }"
+						@click="selectedCategory = cat.name">
+					<view class="category-icon" :class="{ dashed: !!cat.dashed }" :style="{ backgroundColor: cat.bg, color: cat.color }">
+							<text>{{ cat.icon }}</text>
+						</view>
+						<text class="category-name">{{ cat.name }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view class="details-section">
+				<view class="detail-item">
+					<text class="detail-icon">📅</text>
+					<view class="detail-content">
+						<text class="detail-label">日期</text>
+						<input class="detail-input" type="date" v-model="date" />
+					</view>
+				</view>
+				<view class="detail-item">
+					<text class="detail-icon">📝</text>
+					<view class="detail-content">
+						<text class="detail-label">备注</text>
+						<input class="detail-input" type="text" v-model="note" placeholder="这笔钱花在哪了？" />
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+
+		<view class="save-section">
+			<text class="save-btn" @click="saveTransaction">保存账目</text>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref } from 'vue'
+
+	const amount = ref<string>('')
+	const type = ref<string>('expense')
+	const selectedCategory = ref<string>('餐饮')
+	const date = ref<string>('')
+	const note = ref<string>('')
+
+	const categories = [
+		{ name: '餐饮', icon: '🍔', bg: '#ffedd5', color: '#ea580c' },
+		{ name: '购物', icon: '🛍️', bg: '#dbeafe', color: '#2563eb' },
+		{ name: '旅行', icon: '✈️', bg: '#dcfce7', color: '#16a34a' },
+		{ name: '账单', icon: '📄', bg: '#f3e8ff', color: '#9333ea' },
+		{ name: '医疗', icon: '🏥', bg: '#fee2e2', color: '#dc2626' },
+		{ name: '娱乐', icon: '🎭', bg: '#fef3c7', color: '#ca8a04' },
+		{ name: '学习', icon: '📚', bg: '#e0e7ff', color: '#4f46e5' },
+		{ name: '其他', icon: '+', bg: 'transparent', color: '#94a3b8', dashed: true }
+	]
+
+	date.value = new Date().toISOString().split('T')[0]
+
+	function goBack() {
+		uni.navigateBack()
+	}
+
+	function saveTransaction() {
+		const amountNum = Number(amount.value)
+		
+		if (!amountNum || amountNum <= 0) {
+			uni.showToast({ title: '请输入有效金额', icon: 'none' })
+			return
+		}
+
+		const transaction = {
+			id: Date.now().toString(),
+			type: type.value,
+			amount: amountNum,
+			category: selectedCategory.value,
+			description: note.value || `新${type.value === 'income' ? '收入' : '支出'}`,
+			note: note.value,
+			date: date.value,
+			iconText: type.value === 'income' ? '💰' : '💸',
+			iconBg: type.value === 'income' ? '#dcfce7' : '#fee2e2',
+			iconColor: type.value === 'income' ? '#16a34a' : '#dc2626'
+		}
+
+		let transactions: any[] = []
+		const stored = uni.getStorageSync('transactions') as string | null
+		if (stored) {
+			transactions = JSON.parse(stored) as any[]
+		}
+		transactions.push(transaction)
+		uni.setStorageSync('transactions', JSON.stringify(transactions))
+
+		uni.showToast({ title: '保存成功', icon: 'success' })
+
+		setTimeout(() => {
+			uni.navigateBack()
+		}, 1000)
+	}
+</script>
+
+<style>
+	.page {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		background-color: #ffffff;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
+
+	.header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 12px 16px;
+		border-bottom-width: 1px;
+		border-bottom-color: #f1f5f9;
+		position: sticky;
+		top: 0;
+		background-color: #ffffff;
+		z-index: 10;
+	}
+
+	.back-btn {
+		font-size: 24px;
+		color: #64748b;
+		width: 40px;
+		padding: 8px;
+		margin-left: -8px;
+	}
+
+	.header-title {
+		font-size: 18px;
+		font-weight: 600;
+		color: #1e293b;
+	}
+
+	.placeholder {
+		width: 40px;
+	}
+
+	.content {
+		flex: 1;
+		padding: 32px 24px;
+	}
+
+	.amount-section {
+		align-items: center;
+		margin-bottom: 32px;
+	}
+
+	.amount-label {
+		font-size: 14px;
+		font-weight: 500;
+		color: #64748b;
+		margin-bottom: 4px;
+	}
+
+	.amount-input {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+	}
+
+	.currency {
+		font-size: 40px;
+		font-weight: bold;
+		color: #1152d4;
+		margin-right: 4px;
+	}
+
+	.amount-field {
+		font-size: 48px;
+		font-weight: bold;
+		color: #1e293b;
+		text-align: center;
+		width: 100%;
+		border: none;
+		outline: none;
+	}
+
+	.type-section {
+		margin-bottom: 32px;
+	}
+
+	.type-toggle {
+		flex-direction: row;
+		background-color: #f1f5f9;
+		border-radius: 8px;
+		padding: 4px;
+	}
+
+	.type-btn {
+		flex: 1;
+		text-align: center;
+		padding: 8px;
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 600;
+		color: #64748b;
+	}
+
+	.type-btn.active {
+		background-color: #ffffff;
+		color: #1152d4;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+
+	.category-section {
+		margin-bottom: 32px;
+	}
+
+	.section-label {
+		font-size: 12px;
+		font-weight: bold;
+		color: #94a3b8;
+		text-transform: uppercase;
+		margin-bottom: 16px;
+	}
+
+	.category-grid {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.category-item {
+		width: 25%;
+		align-items: center;
+		margin-bottom: 16px;
+	}
+
+	.category-icon {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 8px;
+		border-width: 2px;
+		border-color: transparent;
+	}
+
+	.category-icon.dashed {
+		border-style: dashed;
+		border-color: #e2e8f0;
+	}
+
+	.category-item.selected .category-icon {
+		border-color: #1152d4;
+	}
+
+	.category-icon text {
+		font-size: 24px;
+	}
+
+	.category-name {
+		font-size: 12px;
+		font-weight: 500;
+		color: #475569;
+	}
+
+	.details-section {
+		margin-bottom: 40px;
+	}
+
+	.detail-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 12px;
+		background-color: #f8fafb;
+		border-radius: 8px;
+		border-width: 1px;
+		border-color: #f1f5f9;
+		margin-bottom: 16px;
+	}
+
+	.detail-icon {
+		font-size: 20px;
+		margin-right: 12px;
+	}
+
+	.detail-content {
+		flex: 1;
+		flex-direction: column;
+	}
+
+	.detail-label {
+		font-size: 10px;
+		font-weight: bold;
+		color: #94a3b8;
+		text-transform: uppercase;
+		margin-bottom: 4px;
+	}
+
+	.detail-input {
+		font-size: 14px;
+		font-weight: 500;
+		color: #1e293b;
+		width: 100%;
+		border: none;
+		outline: none;
+		background-color: transparent;
+	}
+
+	.save-section {
+		padding: 16px 24px;
+		border-top-width: 1px;
+		border-top-color: #f1f5f9;
+		padding-bottom: calc(16px + env(safe-area-inset-bottom));
+	}
+
+	.save-btn {
+		width: 100%;
+		background-color: #1152d4;
+		color: #ffffff;
+		font-size: 16px;
+		font-weight: bold;
+		text-align: center;
+		padding: 16px;
+		border-radius: 8px;
+	}
+</style>

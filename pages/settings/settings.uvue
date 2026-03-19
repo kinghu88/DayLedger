@@ -1,0 +1,441 @@
+<template>
+	<view class="page">
+		<header class="header">
+			<text class="header-title">设置</text>
+		</header>
+
+		<scroll-view class="content" scroll-y="true">
+			<view class="profile-section">
+				<view class="profile-card">
+					<view class="avatar-container">
+						<view class="avatar">
+							<text>👤</text>
+						</view>
+						<view class="pro-badge">
+							<text>PRO</text>
+						</view>
+					</view>
+					<view class="profile-info">
+						<text class="profile-name">王小明</text>
+						<view class="profile-meta">
+							<text class="vip-badge">黄金会员</text>
+							<text class="separator">•</text>
+							<text class="user-id">ID: 888888</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view class="settings-groups">
+				<view class="settings-group">
+					<text class="group-title">资产与分类</text>
+					<view class="group-card">
+						<view class="menu-item" @click="onMenuClick('账本管理')">
+							<view class="menu-icon">
+								<text>📖</text>
+							</view>
+							<text class="menu-text">账本管理</text>
+							<text class="menu-arrow">›</text>
+						</view>
+						<view class="menu-divider"></view>
+						<view class="menu-item" @click="onMenuClick('分类管理')">
+							<view class="menu-icon">
+								<text>🏷️</text>
+							</view>
+							<text class="menu-text">分类管理</text>
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+				</view>
+
+				<view class="settings-group">
+					<text class="group-title">功能设置</text>
+					<view class="group-card">
+						<view class="menu-item" @click="onMenuClick('记账提醒')">
+							<view class="menu-icon">
+								<text>🔔</text>
+							</view>
+							<text class="menu-text">记账提醒</text>
+							<text class="menu-arrow">›</text>
+						</view>
+						<view class="menu-divider"></view>
+						<view class="menu-item" @click="onMenuClick('导出数据')">
+							<view class="menu-icon">
+								<text>📤</text>
+							</view>
+							<text class="menu-text">导出数据</text>
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+				</view>
+
+				<view class="settings-group">
+					<text class="group-title">其他</text>
+					<view class="group-card">
+						<view class="menu-item" @click="onMenuClick('通用设置')">
+							<view class="menu-icon">
+								<text>⚙️</text>
+							</view>
+							<text class="menu-text">通用设置</text>
+							<text class="menu-arrow">›</text>
+						</view>
+						<view class="menu-divider"></view>
+						<view class="menu-item" @click="onMenuClick('关于我们')">
+							<view class="menu-icon">
+								<text>ℹ️</text>
+							</view>
+							<text class="menu-text">关于我们</text>
+							<text class="menu-arrow">›</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view class="logout-section">
+				<text class="logout-btn" @click="onLogout">退出登录</text>
+			</view>
+		</scroll-view>
+
+		<view class="tab-bar">
+			<view class="nav-item" @click="goToHome">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">首页</text>
+			</view>
+
+			<view class="nav-item" @click="goToHistory">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">明细</text>
+			</view>
+
+			<view class="nav-fab-wrap">
+				<view class="nav-fab-btn" @click="goToAdd">
+					<svg class="nav-fab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+					</svg>
+				</view>
+			</view>
+
+			<view class="nav-item" @click="goToStats">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">统计</text>
+			</view>
+
+			<view class="nav-item active" @click="goToSettings">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label nav-label-active">设置</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	function onMenuClick(title: string) {
+		uni.showToast({ title: `${title}功能开发中`, icon: 'none' })
+	}
+
+	function onLogout() {
+		uni.showModal({
+			title: '提示',
+			content: '确定要退出登录吗？',
+			success: (res) => {
+				if (res.confirm) {
+					uni.removeStorageSync('transactions')
+					uni.showToast({ title: '已退出登录', icon: 'success' })
+					setTimeout(() => {
+						uni.reLaunch({ url: '/pages/index/index' })
+					}, 1000)
+				}
+			}
+		})
+	}
+
+	function goToHome() {
+		uni.reLaunch({ url: '/pages/index/index' })
+	}
+
+	function goToHistory() {
+		uni.reLaunch({ url: '/pages/history/history' })
+	}
+
+	function goToAdd() {
+		uni.navigateTo({ url: '/pages/add-transaction/add-transaction' })
+	}
+
+	function goToStats() {
+		uni.reLaunch({ url: '/pages/stats/stats' })
+	}
+
+	function goToSettings() {}
+</script>
+
+<style>
+	.page {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		background-color: #f8f6f6;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
+
+	.header {
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		height: 56px;
+		background-color: rgba(248, 246, 246, 0.8);
+		backdrop-filter: blur(12px);
+		border-bottom-width: 1px;
+		border-bottom-color: rgba(17, 82, 212, 0.1);
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.header-title {
+		font-size: 18px;
+		font-weight: bold;
+		color: #1e293b;
+	}
+
+	.content {
+		flex: 1;
+		padding-bottom: 100px;
+	}
+
+	.profile-section {
+		padding: 24px;
+	}
+
+	.profile-card {
+		flex-direction: row;
+		align-items: center;
+		background-color: #ffffff;
+		border-radius: 12px;
+		padding: 20px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.avatar-container {
+		position: relative;
+		margin-right: 20px;
+	}
+
+	.avatar {
+		width: 80px;
+		height: 80px;
+		border-radius: 50%;
+		background-color: #f1f5f9;
+		border-width: 2px;
+		border-color: #1152d4;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.avatar text {
+		font-size: 40px;
+	}
+
+	.pro-badge {
+		position: absolute;
+		bottom: -4px;
+		right: -4px;
+		background-color: #1152d4;
+		color: #ffffff;
+		font-size: 10px;
+		font-weight: bold;
+		padding: 2px 8px;
+		border-radius: 10px;
+	}
+
+	.profile-info {
+		flex-direction: column;
+	}
+
+	.profile-name {
+		font-size: 20px;
+		font-weight: bold;
+		color: #1e293b;
+	}
+
+	.profile-meta {
+		flex-direction: row;
+		align-items: center;
+		margin-top: 4px;
+	}
+
+	.vip-badge {
+		font-size: 14px;
+		color: #1152d4;
+		font-weight: 500;
+	}
+
+	.separator {
+		font-size: 14px;
+		color: #cbd5e1;
+		margin: 0 8px;
+	}
+
+	.user-id {
+		font-size: 14px;
+		color: #64748b;
+	}
+
+	.settings-groups {
+		padding: 0 16px;
+	}
+
+	.settings-group {
+		margin-bottom: 24px;
+	}
+
+	.group-title {
+		font-size: 12px;
+		font-weight: 600;
+		color: #94a3b8;
+		text-transform: uppercase;
+		margin-bottom: 12px;
+		padding-left: 8px;
+	}
+
+	.group-card {
+		background-color: #ffffff;
+		border-radius: 12px;
+		overflow: hidden;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.menu-item {
+		flex-direction: row;
+		align-items: center;
+		padding: 16px;
+	}
+
+	.menu-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 8px;
+		background-color: rgba(17, 82, 212, 0.1);
+		align-items: center;
+		justify-content: center;
+		margin-right: 16px;
+	}
+
+	.menu-icon text {
+		font-size: 20px;
+	}
+
+	.menu-text {
+		flex: 1;
+		font-size: 16px;
+		font-weight: 500;
+		color: #1e293b;
+	}
+
+	.menu-arrow {
+		font-size: 20px;
+		color: #94a3b8;
+	}
+
+	.menu-divider {
+		height: 1px;
+		background-color: #f1f5f9;
+		margin-left: 72px;
+	}
+
+	.logout-section {
+		padding: 32px 24px;
+	}
+
+	.logout-btn {
+		width: 100%;
+		padding: 16px;
+		border-radius: 12px;
+		border-width: 2px;
+		border-color: #1152d4;
+		text-align: center;
+		font-size: 16px;
+		font-weight: bold;
+		color: #1152d4;
+	}
+
+	.tab-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		min-height: 60px;
+		background-color: #ffffff;
+		border-top-width: 1px;
+		border-top-color: #e5e7eb;
+		box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding-left: 24px;
+		padding-right: 24px;
+		padding-top: 12px;
+		padding-bottom: 12px;
+		z-index: 40;
+		overflow: visible;
+	}
+
+	.nav-item {
+		align-items: center;
+		flex-direction: column;
+		color: #9ca3af;
+	}
+
+	.nav-icon {
+		width: 24px;
+		height: 24px;
+	}
+
+	.nav-label {
+		font-size: 10px;
+		margin-top: 4px;
+		font-weight: 500;
+	}
+
+	.nav-item.active {
+		color: #1152d4;
+	}
+
+	.nav-label-active {
+		font-weight: bold;
+	}
+
+	.nav-fab-wrap {
+		position: relative;
+		top: -24px;
+		z-index: 60;
+	}
+
+	.nav-fab-btn {
+		width: 48px;
+		height: 48px;
+		background-color: #1152d4;
+		border-radius: 50%;
+		border-width: 4px;
+		border-color: #f9fafb;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		color: #ffffff;
+		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
+		z-index: 60;
+	}
+
+	.nav-fab-icon {
+		width: 24px;
+		height: 24px;
+	}
+</style>

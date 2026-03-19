@@ -1,0 +1,591 @@
+<template>
+	<view class="page">
+		<header class="header">
+			<view class="header-top">
+				<text class="header-title">本月收支</text>
+				<view class="header-date">
+					<text>{{ currentMonth }}</text>
+					<text class="arrow">▼</text>
+				</view>
+			</view>
+			<view class="header-stats">
+				<view class="stat-item">
+					<text class="stat-label">收入</text>
+					<text class="stat-value">${{ income.toFixed(0) }}</text>
+				</view>
+				<view class="stat-item">
+					<text class="stat-label">支出</text>
+					<text class="stat-value">${{ expense.toFixed(0) }}</text>
+				</view>
+				<view class="stat-item">
+					<text class="stat-label">结余</text>
+					<text class="stat-value">${{ balance.toFixed(0) }}</text>
+				</view>
+			</view>
+		</header>
+
+		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
+			<!-- section: spending-analysis -->
+			<view class="spending-section">
+				<text class="section-title">支出分类</text>
+				<view class="chart-container">
+					<view class="doughnut-placeholder">
+						<view class="doughnut-inner">
+							<text class="chart-label">总计</text>
+							<text class="chart-value">${{ expense.toFixed(0) }}</text>
+						</view>
+					</view>
+				</view>
+				<view class="chart-legend">
+					<view class="legend-item">
+						<view class="legend-dot" style="background-color: #1152d4"></view>
+						<text class="legend-text">房租 (35%)</text>
+					</view>
+					<view class="legend-item">
+						<view class="legend-dot" style="background-color: #3b82f6"></view>
+						<text class="legend-text">餐饮 (25%)</text>
+					</view>
+					<view class="legend-item">
+						<view class="legend-dot" style="background-color: #93c5fd"></view>
+						<text class="legend-text">购物 (25%)</text>
+					</view>
+					<view class="legend-item">
+						<view class="legend-dot" style="background-color: #e2e8f0"></view>
+						<text class="legend-text">其他 (15%)</text>
+					</view>
+					<view class="legend-item">
+						<view class="legend-dot" style="background-color: #e2e8f0"></view>
+						<text class="legend-text">其他 (15%)</text>
+					</view>
+				</view>
+			</view>
+
+			<!-- section: transaction-list -->
+			<view class="transactions-section">
+				<view class="section-header">
+					<text class="section-title-lg">最近交易</text>
+					<text class="view-all" @click="goToHistory">查看全部</text>
+				</view>
+				<view class="transactions-list">
+					<view v-if="recentTransactions.length === 0" class="empty-state">
+						<text>暂无交易记录</text>
+					</view>
+					<view v-for="item in recentTransactions" :key="item.id" class="transaction-item">
+						<view class="transaction-left">
+							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
+								<svg v-if="item.iconKind === 'cart'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'cash'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'plane'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'home'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else-if="item.iconKind === 'swap'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+								<svg v-else class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+								</svg>
+							</view>
+							<view class="transaction-info">
+								<text class="transaction-title">{{ item.description }}</text>
+								<text class="transaction-sub">{{ item.subTitle }}</text>
+							</view>
+						</view>
+						<text class="transaction-amount" :style="{ color: item.type === 'income' ? '#10b981' : '#ef4444' }">
+							{{ item.type === 'income' ? '+' : '-' }}{{ formatCurrency(Number(item.amount)) }}
+						</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+
+		<view class="tab-bar">
+			<view class="nav-item active" @click="goToHome">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label nav-label-active">首页</text>
+			</view>
+
+			<view class="nav-item" @click="goToHistory">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">明细</text>
+			</view>
+
+			<view class="nav-fab-wrap">
+				<view class="nav-fab-btn" @click="goToAdd">
+					<svg class="nav-fab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+					</svg>
+				</view>
+			</view>
+
+			<view class="nav-item" @click="goToStats">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">统计</text>
+			</view>
+
+			<view class="nav-item" @click="goToSettings">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">设置</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed } from 'vue'
+
+	const currentMonth = computed(() => {
+		const now = new Date()
+		return `${now.getFullYear()}年${now.getMonth() + 1}月`
+	})
+
+	const transactionsData = ref<any[]>([])
+
+	function loadTransactions() {
+		const stored = uni.getStorageSync('transactions') as string | null
+		if (stored) {
+			transactionsData.value = JSON.parse(stored) as any[]
+		} else {
+			transactionsData.value = [
+				{ id: '1', type: 'expense', amount: 84.20, category: '餐饮', description: '超市购物', date: '2026-03-19', iconText: '🛒', iconBg: '#ffedd5', iconColor: '#ea580c' },
+				{ id: '5', type: 'expense', amount: 26.50, category: '餐饮', description: '早餐', date: '2026-03-20', iconText: '🧋', iconBg: '#ffedd5', iconColor: '#ea580c' },
+				{ id: '6', type: 'expense', amount: 18.00, category: '交通', description: '地铁', date: '2026-03-20', iconText: '🚇', iconBg: '#dbeafe', iconColor: '#2563eb' },
+				{ id: '7', type: 'expense', amount: 129.90, category: '购物', description: '日用品', date: '2026-03-19', iconText: '🧺', iconBg: '#e0f2fe', iconColor: '#0284c7' },
+				{ id: '8', type: 'income', amount: 220, category: '兼职', description: '设计接单', date: '2026-03-19', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
+				{ id: '9', type: 'expense', amount: 58.00, category: '餐饮', description: '晚餐', date: '2026-03-18', iconText: '🍜', iconBg: '#ffedd5', iconColor: '#ea580c' },
+				{ id: '2', type: 'income', amount: 5000, category: '工资', description: '月薪', date: '2026-03-15', iconText: '💰', iconBg: '#dcfce7', iconColor: '#16a34a' },
+				{ id: '10', type: 'expense', amount: 199.00, category: '购物', description: '衣物', date: '2026-03-16', iconText: '👕', iconBg: '#e0f2fe', iconColor: '#0284c7' },
+				{ id: '11', type: 'expense', amount: 12.00, category: '其他', description: '停车费', date: '2026-03-16', iconText: '🅿️', iconBg: '#f1f5f9', iconColor: '#64748b' },
+				{ id: '12', type: 'expense', amount: 66.00, category: '餐饮', description: '聚餐AA', date: '2026-03-14', iconText: '🍲', iconBg: '#ffedd5', iconColor: '#ea580c' },
+				{ id: '13', type: 'income', amount: 88.00, category: '红包', description: '家庭红包', date: '2026-03-13', iconText: '🧧', iconBg: '#dcfce7', iconColor: '#16a34a' },
+				{ id: '3', type: 'expense', amount: 35, category: '交通', description: '打车', date: '2026-03-18', iconText: '🚗', iconBg: '#dbeafe', iconColor: '#2563eb' },
+				{ id: '14', type: 'expense', amount: 39.90, category: '其他', description: '会员订阅', date: '2026-03-12', iconText: '🎫', iconBg: '#f1f5f9', iconColor: '#64748b' },
+				{ id: '15', type: 'expense', amount: 168.00, category: '健康', description: '体检预约', date: '2026-03-10', iconText: '🩺', iconBg: '#fee2e2', iconColor: '#dc2626' },
+				{ id: '16', type: 'expense', amount: 420.00, category: '水电', description: '水电燃气', date: '2026-03-05', iconText: '💡', iconBg: '#fef9c3', iconColor: '#ca8a04' },
+				{ id: '4', type: 'expense', amount: 2000, category: '房租', description: '房租', date: '2026-03-01', iconText: '🏠', iconBg: '#f3e8ff', iconColor: '#9333ea' }
+			]
+		}
+	}
+
+	const income = computed(() => {
+		return transactionsData.value
+			.filter((t: any) => t.type === 'income')
+			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
+	})
+
+	const expense = computed(() => {
+		return transactionsData.value
+			.filter((t: any) => t.type === 'expense')
+			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
+	})
+
+	const balance = computed(() => {
+		return income.value - expense.value
+	})
+
+	function formatDate(dateStr: string): string {
+		const date = new Date(dateStr)
+		const today = new Date()
+		const yesterday = new Date(today)
+		yesterday.setDate(yesterday.getDate() - 1)
+
+		if (date.toDateString() === today.toDateString()) return 'Today'
+		if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+
+		const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+		return `${monthNames[date.getMonth()]} ${date.getDate()}`
+	}
+
+	function formatCurrency(amount: number): string {
+		const fixed = amount.toFixed(2)
+		const parts = fixed.split('.')
+		const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+		return `$${withCommas}.${parts[1]}`
+	}
+
+	function iconKindFor(t: any): string {
+		const category = String(t.category || '')
+		if (t.type === 'income') return 'cash'
+		if (category.includes('餐') || category.includes('饮')) return 'cart'
+		if (category.includes('购')) return 'cart'
+		if (category.includes('交') || category.includes('通')) return 'swap'
+		if (category.includes('房') || category.includes('租')) return 'home'
+		if (category.includes('旅')) return 'plane'
+		return 'info'
+	}
+
+	const recentTransactions = computed(() => {
+		return [...transactionsData.value]
+			.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+			.slice(0, 4)
+			.map((t: any) => ({
+				...t,
+				dateStr: formatDate(t.date),
+				iconKind: iconKindFor(t),
+				subTitle: `${t.category || ''} • ${formatDate(t.date)}`
+			}))
+	})
+
+	onShow(() => {
+		loadTransactions()
+	})
+
+	function goToHome() {}
+
+	function goToHistory() {
+		uni.reLaunch({ url: '/pages/history/history' })
+	}
+
+	function goToAdd() {
+		uni.navigateTo({ url: '/pages/add-transaction/add-transaction' })
+	}
+
+	function goToStats() {
+		uni.reLaunch({ url: '/pages/stats/stats' })
+	}
+
+	function goToSettings() {
+		uni.reLaunch({ url: '/pages/settings/settings' })
+	}
+</script>
+
+<style>
+	.page {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		background-color: #f8fafc;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
+
+	.header {
+		background-color: #1152d4;
+		padding: 24px 20px 32px;
+		border-radius: 0 0 24px 24px;
+		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.25);
+	}
+
+	.header-top {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24px;
+	}
+
+	.header-title {
+		font-size: 18px;
+		font-weight: 600;
+		color: #ffffff;
+	}
+
+	.header-date {
+		flex-direction: row;
+		align-items: center;
+		background-color: rgba(255, 255, 255, 0.2);
+		padding: 4px 12px;
+		border-radius: 8px;
+	}
+
+	.header-date text {
+		font-size: 14px;
+		color: #ffffff;
+		margin-right: 4px;
+	}
+
+	.arrow {
+		font-size: 10px;
+	}
+
+	.header-stats {
+		flex-direction: row;
+		justify-content: space-around;
+	}
+
+	.stat-item {
+		align-items: center;
+	}
+
+	.stat-label {
+		font-size: 12px;
+		color: rgba(255, 255, 255, 0.7);
+		text-transform: uppercase;
+		margin-bottom: 4px;
+	}
+
+	.stat-value {
+		font-size: 18px;
+		font-weight: bold;
+		color: #ffffff;
+	}
+
+	.content {
+		flex: 1;
+		padding-left: 20px;
+		padding-right: 20px;
+		padding-top: 24px;
+		/* keep content above fixed bottom nav */
+		/* padding-bottom: calc(96px + env(safe-area-inset-bottom)); */
+		padding-bottom: calc(70px + env(safe-area-inset-bottom)); 
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	
+	.content::-webkit-scrollbar {
+		width: 0;
+		height: 0;
+		display: none;
+	}
+
+	/* main space-y-8 */
+	.spending-section {
+		background-color: #ffffff;
+		border-radius: 8px;
+		padding: 24px;
+		margin-bottom: 32px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.transactions-section {
+		margin-bottom: 32px;
+	}
+
+	.section-title {
+		font-size: 14px;
+		font-weight: 600;
+		color: #64748b;
+		text-transform: uppercase;
+		margin-bottom: 16px;
+	}
+
+	.section-title-lg {
+		font-size: 18px;
+		font-weight: bold;
+		color: #1e293b;
+	}
+
+	.section-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 16px;
+	}
+
+	.view-all {
+		font-size: 14px;
+		font-weight: 500;
+		color: #1152d4;
+	}
+
+	.chart-container {
+		height: 200px;
+		width: 200px;
+		margin: 0 auto;
+	}
+
+	.doughnut-placeholder {
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		background: conic-gradient(#1152d4 0% 35%, #3b82f6 35% 60%, #93c5fd 60% 85%, #e2e8f0 85% 100%);
+		align-items: center;
+		justify-content: center;
+	}
+
+	.doughnut-inner {
+		width: 70%;
+		height: 70%;
+		background-color: #ffffff;
+		border-radius: 50%;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.chart-label {
+		font-size: 12px;
+		color: #94a3b8;
+	}
+
+	.chart-value {
+		font-size: 16px;
+		font-weight: bold;
+		color: #1e293b;
+	}
+
+	.chart-legend {
+		flex-direction: row;
+		flex-wrap: wrap;
+		margin-top: 24px;
+	}
+
+	.legend-item {
+		width: 50%;
+		flex-direction: row;
+		align-items: center;
+		margin-bottom: 12px;
+	}
+
+	.legend-dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		margin-right: 8px;
+	}
+
+	.legend-text {
+		font-size: 12px;
+		color: #64748b;
+	}
+
+	.transactions-list {
+		margin-top: 12px;
+	}
+
+	.transaction-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 16px;
+		background-color: #ffffff;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.transaction-left {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.transaction-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16px;
+	}
+
+	.tx-icon {
+		width: 24px;
+		height: 24px;
+	}
+
+	.transaction-info {
+		flex-direction: column;
+	}
+
+	.transaction-title {
+		font-size: 14px;
+		font-weight: 600;
+		color: #1e293b;
+	}
+
+	.transaction-sub {
+		font-size: 12px;
+		color: #94a3b8;
+		margin-top: 2px;
+	}
+
+	.transaction-amount {
+		font-size: 14px;
+		font-weight: bold;
+	}
+
+	.empty-state {
+		align-items: center;
+		padding: 40px;
+	}
+
+	.empty-state text {
+		color: #94a3b8;
+		font-size: 14px;
+	}
+
+	.tab-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		min-height: 60px;
+		background-color: #ffffff;
+		border-top-width: 1px;
+		border-top-color: #e5e7eb;
+		/* match prototype: solid bar + divider line (no overlay shadow) */
+		box-shadow: none;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding-left: 24px;
+		padding-right: 24px;
+		padding-top: 12px;
+		padding-bottom: calc(12px + env(safe-area-inset-bottom));
+		z-index: 40;
+		overflow: visible;
+	}
+
+	.nav-item {
+		align-items: center;
+		flex-direction: column;
+		color: #9ca3af;
+	}
+
+	.nav-icon {
+		width: 24px;
+		height: 24px;
+	}
+
+	.nav-label {
+		font-size: 10px;
+		margin-top: 4px;
+		font-weight: 500;
+	}
+
+	.nav-item.active {
+		color: #1152d4;
+	}
+
+	.nav-label-active {
+		font-weight: bold;
+	}
+
+	.nav-fab-wrap {
+		position: relative;
+		top: -24px;
+		z-index: 60;
+	}
+
+	.nav-fab-btn {
+		width: 48px;
+		height: 48px;
+		background-color: #1152d4;
+		border-radius: 50%;
+		border-width: 4px;
+		border-color: #f9fafb;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		color: #ffffff;
+		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
+		z-index: 60;
+	}
+
+	.nav-fab-icon {
+		width: 24px;
+		height: 24px;
+	}
+</style>

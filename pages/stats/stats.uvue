@@ -1,0 +1,580 @@
+<template>
+	<view class="page">
+		<header class="header">
+			<view class="header-top">
+				<text class="header-title">收支统计</text>
+				<view class="header-icon">
+					<text>🔔</text>
+				</view>
+			</view>
+			<view class="period-toggle">
+				<text class="period-btn" :class="{ active: period === 'week' }" @click="period = 'week'">周</text>
+				<text class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'">月</text>
+				<text class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'">年</text>
+			</view>
+			<scroll-view class="month-scroll" scroll-x="true">
+				<view class="month-list">
+					<text v-for="m in months" :key="m" class="month-btn" :class="{ active: m === '本月', disabled: m === '6月' }">{{ m }}</text>
+				</view>
+			</scroll-view>
+		</header>
+
+		<scroll-view class="content" scroll-y="true">
+			<view class="section">
+				<view class="section-header">
+					<text class="section-title">{{ chartTitle }}</text>
+					<text class="section-period">{{ chartPeriod }}</text>
+				</view>
+				<view class="chart-container">
+					<view class="bar-chart">
+						<view v-for="(item, index) in barData" :key="index" class="bar-item">
+							<view class="bar" :style="{ height: item.height + '%', backgroundColor: item.color }"></view>
+							<text class="bar-label">{{ item.label }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view class="section">
+				<view class="budget-header">
+					<view class="budget-info">
+						<text class="section-title">本月预算</text>
+						<text class="budget-used">{{ budgetPercent }}% of ${{ budgetAmount }} 已用</text>
+					</view>
+					<text class="budget-value">${{ totalExpense.toFixed(2) }}</text>
+				</view>
+				<view class="progress-bar">
+					<view class="progress-fill" :style="{ width: Math.min(budgetPercent, 100) + '%' }"></view>
+				</view>
+				<text class="budget-remaining">剩余 ${{ Math.max(budgetAmount - totalExpense, 0).toFixed(2) }}</text>
+			</view>
+
+			<view class="section">
+				<text class="section-title-main">本月主要支出</text>
+				<view class="category-list">
+					<view v-if="categoryStats.length === 0" class="empty-state">
+						<text>本月暂无支出记录</text>
+					</view>
+					<view v-for="cat in categoryStats" :key="cat.name" class="category-item">
+						<view class="category-left">
+							<view class="category-icon" :style="{ backgroundColor: cat.bg }">
+								<text :style="{ color: cat.color }">{{ cat.icon }}</text>
+							</view>
+							<view class="category-info">
+								<text class="category-name">{{ cat.name }}</text>
+								<text class="category-percent">占比 {{ cat.percent }}%</text>
+							</view>
+						</view>
+						<text class="category-amount">${{ cat.amount.toFixed(2) }}</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+
+		<view class="tab-bar">
+			<view class="nav-item" @click="goToHome">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">首页</text>
+			</view>
+
+			<view class="nav-item" @click="goToHistory">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">明细</text>
+			</view>
+
+			<view class="nav-fab-wrap">
+				<view class="nav-fab-btn" @click="goToAdd">
+					<svg class="nav-fab-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+					</svg>
+				</view>
+			</view>
+
+			<view class="nav-item active" @click="goToStats">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label nav-label-active">统计</text>
+			</view>
+
+			<view class="nav-item" @click="goToSettings">
+				<svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+					<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+				</svg>
+				<text class="nav-label">设置</text>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+	import { ref, computed } from 'vue'
+
+	const period = ref<string>('month')
+
+	const months = ['1月', '2月', '3月', '4月', '上月', '本月', '6月']
+
+	const transactionsData = ref<any[]>([])
+
+	function loadTransactions() {
+		const stored = uni.getStorageSync('transactions') as string | null
+		if (stored) {
+			transactionsData.value = JSON.parse(stored) as any[]
+		} else {
+			transactionsData.value = []
+		}
+	}
+
+	onShow(() => {
+		loadTransactions()
+	})
+
+	const chartTitle = computed(() => {
+		if (period.value === 'week') return '消费趋势 (本周)'
+		if (period.value === 'year') return '消费趋势 (当年)'
+		return '消费趋势 (本月)'
+	})
+
+	const chartPeriod = computed(() => {
+		if (period.value === 'week') return '5月22日 - 5月28日'
+		if (period.value === 'year') return '1月1日 - 12月31日'
+		return '5月1日 - 5月31日'
+	})
+
+	const barData = computed(() => {
+		return [
+			{ height: 40, color: '#bfdbfe', label: 'W1' },
+			{ height: 65, color: '#93c5fd', label: 'W2' },
+			{ height: 90, color: '#1152d4', label: 'W3' },
+			{ height: 55, color: '#60a5fa', label: 'W4' }
+		]
+	})
+
+	const budgetAmount = 2000
+
+	const totalExpense = computed(() => {
+		return transactionsData.value
+			.filter((t: any) => t.type === 'expense')
+			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
+	})
+
+	const budgetPercent = computed(() => {
+		return Math.round((totalExpense.value / budgetAmount) * 100)
+	})
+
+	const categoryMap: Record<string, any> = {
+		'餐饮': { icon: '🍔', bg: '#ffedd5', color: '#ea580c' },
+		'购物': { icon: '🛍️', bg: '#dbeafe', color: '#2563eb' },
+		'旅行': { icon: '✈️', bg: '#dcfce7', color: '#16a34a' },
+		'账单': { icon: '📄', bg: '#f3e8ff', color: '#9333ea' },
+		'医疗': { icon: '🏥', bg: '#fee2e2', color: '#dc2626' },
+		'娱乐': { icon: '🎭', bg: '#fef3c7', color: '#ca8a04' },
+		'学习': { icon: '📚', bg: '#e0e7ff', color: '#4f46e5' },
+		'其他': { icon: '➕', bg: '#f1f5f9', color: '#64748b' },
+		'房租': { icon: '🏠', bg: '#f3e8ff', color: '#9333ea' },
+		'交通': { icon: '🚗', bg: '#dbeafe', color: '#2563eb' }
+	}
+
+	const categoryStats = computed(() => {
+		const categoryTotals: Record<string, number> = {}
+		
+		transactionsData.value
+			.filter((t: any) => t.type === 'expense')
+			.forEach((t: any) => {
+				if (!categoryTotals[t.category]) {
+					categoryTotals[t.category] = 0
+				}
+				categoryTotals[t.category] += Number(t.amount)
+			})
+
+		const total = Object.values(categoryTotals).reduce((sum: number, v) => sum + v, 0)
+		
+		return Object.entries(categoryTotals)
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 3)
+			.map(([name, amount]) => {
+				const catInfo = categoryMap[name] || { icon: '❓', bg: '#f1f5f9', color: '#64748b' }
+				return {
+					name,
+					amount,
+					percent: total > 0 ? Math.round((amount / total) * 100) : 0,
+					...catInfo
+				}
+			})
+	})
+
+	function goToHome() {
+		uni.reLaunch({ url: '/pages/index/index' })
+	}
+
+	function goToHistory() {
+		uni.reLaunch({ url: '/pages/history/history' })
+	}
+
+	function goToAdd() {
+		uni.navigateTo({ url: '/pages/add-transaction/add-transaction' })
+	}
+
+	function goToStats() {}
+
+	function goToSettings() {
+		uni.reLaunch({ url: '/pages/settings/settings' })
+	}
+</script>
+
+<style>
+	.page {
+		display: flex;
+		flex-direction: column;
+		height: 100vh;
+		background-color: #f3f4f6;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
+
+	.header {
+		background-color: #ffffff;
+		padding: 40px 16px 12px;
+		position: sticky;
+		top: 0;
+		z-index: 10;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.header-top {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24px;
+	}
+
+	.header-title {
+		font-size: 24px;
+		font-weight: bold;
+		color: #1e293b;
+	}
+
+	.header-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.header-icon text {
+		font-size: 20px;
+	}
+
+	.period-toggle {
+		flex-direction: row;
+		background-color: #f3f4f6;
+		border-radius: 8px;
+		padding: 4px;
+		margin-bottom: 12px;
+	}
+
+	.period-btn {
+		flex: 1;
+		text-align: center;
+		padding: 8px;
+		border-radius: 8px;
+		font-size: 14px;
+		font-weight: 500;
+		color: #64748b;
+	}
+
+	.period-btn.active {
+		background-color: #ffffff;
+		color: #1152d4;
+		font-weight: 600;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	}
+
+	.month-scroll {
+		width: 100%;
+	}
+
+	.month-list {
+		flex-direction: row;
+	}
+
+	.month-btn {
+		padding: 6px 16px;
+		border-radius: 16px;
+		font-size: 14px;
+		font-weight: 500;
+		color: #64748b;
+		background-color: #f9fafb;
+		margin-right: 8px;
+	}
+
+	.month-btn.active {
+		background-color: #1152d4;
+		color: #ffffff;
+		font-weight: 600;
+	}
+
+	.month-btn.disabled {
+		color: #d1d5db;
+	}
+
+	.content {
+		flex: 1;
+		padding: 16px;
+		padding-bottom: 100px;
+	}
+
+	.section {
+		background-color: #ffffff;
+		border-radius: 8px;
+		padding: 20px;
+		margin-bottom: 16px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.section-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 24px;
+	}
+
+	.section-title {
+		font-size: 16px;
+		font-weight: 600;
+		color: #374151;
+	}
+
+	.section-title-main {
+		font-size: 16px;
+		font-weight: 600;
+		color: #374151;
+		margin-bottom: 16px;
+	}
+
+	.section-period {
+		font-size: 12px;
+		color: #94a3b8;
+	}
+
+	.chart-container {
+		height: 200px;
+	}
+
+	.bar-chart {
+		flex-direction: row;
+		align-items: flex-end;
+		justify-content: space-between;
+		height: 100%;
+		padding: 0 8px;
+	}
+
+	.bar-item {
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
+		height: 100%;
+	}
+
+	.bar {
+		width: 100%;
+		max-width: 40px;
+		border-radius: 4px 4px 0 0;
+	}
+
+	.bar-label {
+		font-size: 10px;
+		color: #94a3b8;
+		margin-top: 8px;
+	}
+
+	.budget-header {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: flex-end;
+		margin-bottom: 12px;
+	}
+
+	.budget-info {
+		flex-direction: column;
+	}
+
+	.budget-used {
+		font-size: 14px;
+		color: #64748b;
+		margin-top: 4px;
+	}
+
+	.budget-value {
+		font-size: 18px;
+		font-weight: bold;
+		color: #1f2937;
+	}
+
+	.progress-bar {
+		height: 12px;
+		background-color: #f3f4f6;
+		border-radius: 6px;
+		overflow: hidden;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background-color: #1152d4;
+		border-radius: 6px;
+	}
+
+	.budget-remaining {
+		font-size: 12px;
+		color: #94a3b8;
+		text-align: right;
+		margin-top: 8px;
+	}
+
+	.category-list {
+		margin-top: 12px;
+	}
+
+	.category-item {
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding: 16px;
+		background-color: #ffffff;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.category-item:last-child {
+		margin-bottom: 0;
+	}
+
+	.category-left {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.category-icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		align-items: center;
+		justify-content: center;
+		margin-right: 16px;
+	}
+
+	.category-icon text {
+		font-size: 20px;
+	}
+
+	.category-info {
+		flex-direction: column;
+	}
+
+	.category-name {
+		font-size: 14px;
+		font-weight: 500;
+		color: #1f2937;
+	}
+
+	.category-percent {
+		font-size: 12px;
+		color: #6b7280;
+		margin-top: 2px;
+	}
+
+	.category-amount {
+		font-size: 14px;
+		font-weight: 600;
+		color: #1f2937;
+	}
+
+	.empty-state {
+		align-items: center;
+		padding: 24px;
+	}
+
+	.empty-state text {
+		color: #94a3b8;
+		font-size: 14px;
+	}
+
+	.tab-bar {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		min-height: 60px;
+		background-color: #ffffff;
+		border-top-width: 1px;
+		border-top-color: #e5e7eb;
+		box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		padding-left: 24px;
+		padding-right: 24px;
+		padding-top: 12px;
+		padding-bottom: 12px;
+		z-index: 40;
+		overflow: visible;
+	}
+
+	.nav-item {
+		align-items: center;
+		flex-direction: column;
+		color: #9ca3af;
+	}
+
+	.nav-icon {
+		width: 24px;
+		height: 24px;
+	}
+
+	.nav-label {
+		font-size: 10px;
+		margin-top: 4px;
+		font-weight: 500;
+	}
+
+	.nav-item.active {
+		color: #1152d4;
+	}
+
+	.nav-label-active {
+		font-weight: bold;
+	}
+
+	.nav-fab-wrap {
+		position: relative;
+		top: -24px;
+		z-index: 60;
+	}
+
+	.nav-fab-btn {
+		width: 48px;
+		height: 48px;
+		background-color: #1152d4;
+		border-radius: 50%;
+		border-width: 4px;
+		border-color: #f9fafb;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		color: #ffffff;
+		box-shadow: 0 8px 24px rgba(17, 82, 212, 0.3);
+		z-index: 60;
+	}
+
+	.nav-fab-icon {
+		width: 24px;
+		height: 24px;
+	}
+</style>
