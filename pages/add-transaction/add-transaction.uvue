@@ -13,19 +13,19 @@
 		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
 			<view class="amount-section">
 				<text class="amount-label">输入金额</text>
-				<view class="amount-row">
-					<text class="currency">￥</text>
-					<input class="amount-input" type="number" v-model="amount" placeholder="0.00" :focus="true" />
+				<view class="amount-row" @click="openAmountSheet">
+					<!-- <text class="currency">￥</text> -->
+					<text class="amount-input" :class="{ placeholder: amountDisplayPlaceholder }">{{ amountDisplayText }}</text>
 				</view>
 			</view>
 
 			<view class="type-section">
 				<view class="type-toggle">
 					<view class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'">
-						<text>支出</text>
+						<text class="type-btn-text">支出</text>
 					</view>
 					<view class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'">
-						<text>收入</text>
+						<text class="type-btn-text">收入</text>
 					</view>
 				</view>
 			</view>
@@ -103,6 +103,41 @@
 			<text class="save-btn" @click="saveTransaction">保存账目</text>
 		</view>
 		
+		<view v-if="isAmountSheetOpen" class="amount-mask" @click="cancelAmountSheet"></view>
+		<view v-if="isAmountSheetOpen" class="amount-sheet">
+			<!-- <view class="amount-sheet-header">
+				<text class="amount-sheet-btn" @click="cancelAmountSheet">取消</text>
+				<text class="amount-sheet-title">输入金额</text>
+				<text class="amount-sheet-btn amount-sheet-btn-primary" @click="confirmAmountSheet">确定</text>
+			</view> -->
+			<view class="keypad">
+				<view class="keypad-row">
+					<view class="keypad-key" @click="onKeypadPress('1')"><text class="keypad-key-text">1</text></view>
+					<view class="keypad-key" @click="onKeypadPress('2')"><text class="keypad-key-text">2</text></view>
+					<view class="keypad-key" @click="onKeypadPress('3')"><text class="keypad-key-text">3</text></view>
+				</view>
+				<view class="keypad-row">
+					<view class="keypad-key" @click="onKeypadPress('4')"><text class="keypad-key-text">4</text></view>
+					<view class="keypad-key" @click="onKeypadPress('5')"><text class="keypad-key-text">5</text></view>
+					<view class="keypad-key" @click="onKeypadPress('6')"><text class="keypad-key-text">6</text></view>
+				</view>
+				<view class="keypad-row">
+					<view class="keypad-key" @click="onKeypadPress('7')"><text class="keypad-key-text">7</text></view>
+					<view class="keypad-key" @click="onKeypadPress('8')"><text class="keypad-key-text">8</text></view>
+					<view class="keypad-key" @click="onKeypadPress('9')"><text class="keypad-key-text">9</text></view>
+				</view>
+				<view class="keypad-row">
+					<view class="keypad-key" @click="onKeypadPress('.')"><text class="keypad-key-text">.</text></view>
+					<view class="keypad-key" @click="onKeypadPress('0')"><text class="keypad-key-text">0</text></view>
+					<view class="keypad-key danger" @click="onKeypadPress('del')"><text class="keypad-key-text">删除</text></view>
+				</view>
+				<view class="keypad-row">
+					<view class="keypad-key secondary" @click="onKeypadPress('clear')"><text class="keypad-key-text">清空</text></view>
+					<view class="keypad-key wide" @click="confirmAmountSheet"><text class="keypad-key-text">完成</text></view>
+				</view>
+			</view>
+		</view>
+
 		<view v-if="isDateSheetOpen" class="date-mask" @click="cancelDateSheet"></view>
 		<view v-if="isDateSheetOpen" class="date-sheet">
 			<view class="date-sheet-header">
@@ -175,6 +210,9 @@
 	import { addTransaction, seedTransactionsIfEmpty } from '../../services/transactions'
 
 	const amount = ref<string>('')
+	const isAmountSheetOpen = ref<boolean>(false)
+	const amountDraft = ref<string>('')
+	const amountDraftBackup = ref<string>('')
 	const type = ref<string>('expense')
 	const selectedCategory = ref<string>('food')
 	const selectedMoreCategory = ref<string>('')
@@ -250,12 +288,84 @@
 		const y = Number(parts[0])
 		const m = Number(parts[1])
 		const d = Number(parts[2])
-		if (!y || !m || !d) return null
+		if (isNaN(y) || isNaN(m) || isNaN(d) || y <= 0 || m <= 0 || d <= 0) return null
 		return [y, m, d]
 	}
 
 	function goBack() {
 		uni.navigateBack()
+	}
+
+	function normalizeAmountRaw(v: string): string {
+		const s = v.trim()
+		if (s.length === 0) return ''
+		if (s.startsWith('￥')) return s.slice(1).trim()
+		return s
+	}
+
+	const amountDisplayRaw = computed(() => {
+		return isAmountSheetOpen.value ? amountDraft.value : amount.value
+	})
+
+	const amountDisplayText = computed(() => {
+		const raw = normalizeAmountRaw(amountDisplayRaw.value)
+		if (raw.length === 0) return '￥0.00'
+		return `￥${raw}`
+	})
+
+	const amountDisplayPlaceholder = computed(() => {
+		return normalizeAmountRaw(amountDisplayRaw.value).length === 0
+	})
+
+	function openAmountSheet() {
+		const raw = normalizeAmountRaw(amount.value)
+		amountDraft.value = raw
+		amountDraftBackup.value = raw
+		isAmountSheetOpen.value = true
+	}
+
+	function cancelAmountSheet() {
+		amountDraft.value = amountDraftBackup.value
+		isAmountSheetOpen.value = false
+	}
+
+	function confirmAmountSheet() {
+		amount.value = normalizeAmountRaw(amountDraft.value)
+		isAmountSheetOpen.value = false
+	}
+
+	function onKeypadPress(key: string) {
+		const prev = amountDraft.value
+		if (key === 'del') {
+			amountDraft.value = prev.length ? prev.slice(0, prev.length - 1) : ''
+			return
+		}
+		if (key === 'clear') {
+			amountDraft.value = ''
+			return
+		}
+		if (key === '.') {
+			if (prev.length === 0) {
+				amountDraft.value = '0.'
+				return
+			}
+			if (prev.includes('.')) return
+			amountDraft.value = prev + '.'
+			return
+		}
+		if (key.length !== 1 || key < '0' || key > '9') return
+
+		if (prev === '0' && key === '0' && !prev.includes('.')) return
+		if (prev === '0' && key !== '0' && !prev.includes('.')) {
+			amountDraft.value = key
+			return
+		}
+		const dotIdx = prev.indexOf('.')
+		if (dotIdx >= 0) {
+			const decimals = prev.length - dotIdx - 1
+			if (decimals >= 2) return
+		}
+		amountDraft.value = prev + key
 	}
 	
 	function onCategoryTileClick(key: string) {
@@ -310,7 +420,7 @@
 	
 	function onDatePickerChange(e: any) {
 		const next = e?.detail?.value as number[] | null
-		if (!next || next.length < 3) return
+		if (next == null || next.length < 3) return
 		const yearIdx = next[0] ?? 0
 		const monthIdx = next[1] ?? 0
 		let dayIdx = next[2] ?? 0
@@ -324,23 +434,25 @@
 	function saveTransaction() {
 		const amountNum = Number(amount.value)
 		
-		if (!amountNum || amountNum <= 0) {
+		if (isNaN(amountNum) || amountNum <= 0) {
 			uni.showToast({ title: '请输入有效金额', icon: 'none' })
 			return
 		}
 
-		const selectedKey = selectedCategory.value === 'other' ? (selectedMoreCategory.value || 'other') : selectedCategory.value
+		const selectedKey = selectedCategory.value === 'other'
+			? (selectedMoreCategory.value.length > 0 ? selectedMoreCategory.value : 'other')
+			: selectedCategory.value
 		const selected = [...categories.filter((c: any) => c.key !== 'other'), ...moreCategories].find((c: any) => c.key === selectedKey)
 		const categoryName = selected ? String(selected.name) : '其他'
-		const iconBg = type.value === 'income' ? '#dcfce7' : (selected ? String(selected.bg) : '#f1f5f9')
-		const iconColor = type.value === 'income' ? '#16a34a' : (selected ? String(selected.color) : '#64748b')
+		const iconBg = type.value === 'income' ? '#dcfce7' : (selected != null ? String(selected.bg) : '#f1f5f9')
+		const iconColor = type.value === 'income' ? '#16a34a' : (selected != null ? String(selected.color) : '#64748b')
 
 		const transaction = {
 			id: Date.now().toString(),
 			type: type.value,
 			amount: amountNum,
 			category: categoryName,
-			description: note.value || `新${type.value === 'income' ? '收入' : '支出'}`,
+			description: note.value.length > 0 ? note.value : `新${type.value === 'income' ? '收入' : '支出'}`,
 			note: note.value,
 			date: date.value,
 			iconText: type.value === 'income' ? '💰' : '💸',
@@ -363,7 +475,7 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100%;
 		background-color: #ffffff;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
@@ -378,8 +490,6 @@
 		padding-bottom: 12px;
 		border-bottom-width: 1px;
 		border-bottom-color: #f1f5f9;
-		position: sticky;
-		top: 0;
 		background-color: #ffffff;
 		z-index: 10;
 	}
@@ -415,8 +525,6 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-bottom: 24px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
 	}
 	
 	.content::-webkit-scrollbar {
@@ -458,8 +566,11 @@
 		color: #0f172a;
 		text-align: center;
 		width: 100%;
-		border: none;
-		outline: none;
+		line-height: 56px;
+	}
+	
+	.amount-input.placeholder {
+		color: #cbd5e1;
 	}
 
 	.type-section {
@@ -484,7 +595,7 @@
 		color: #64748b;
 	}
 	
-	.type-btn text {
+	.type-btn-text {
 		font-size: 14px;
 		font-weight: 600;
 	}
@@ -503,7 +614,6 @@
 		font-size: 12px;
 		font-weight: bold;
 		color: #94a3b8;
-		text-transform: uppercase;
 		margin-bottom: 16px;
 		letter-spacing: 0.8px;
 	}
@@ -588,7 +698,6 @@
 		font-size: 10px;
 		font-weight: bold;
 		color: #94a3b8;
-		text-transform: uppercase;
 		margin-bottom: 4px;
 		letter-spacing: 0.8px;
 	}
@@ -599,7 +708,6 @@
 		color: #334155;
 		width: 100%;
 		border: none;
-		outline: none;
 		background-color: transparent;
 	}
 	
@@ -629,7 +737,7 @@
 		border-top-right-radius: 16px;
 		overflow: hidden;
 		z-index: 100;
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-bottom: 0px;
 	}
 	
 	.date-sheet-header {
@@ -692,7 +800,7 @@
 		border-top-right-radius: 16px;
 		overflow: hidden;
 		z-index: 100;
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-bottom: 0px;
 	}
 	
 	.category-sheet-header {
@@ -725,8 +833,6 @@
 	
 	.category-sheet-scroll {
 		max-height: 420px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
 	}
 	
 	.category-sheet-scroll::-webkit-scrollbar {
@@ -778,7 +884,7 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 16px;
-		padding-bottom: calc(16px + env(safe-area-inset-bottom));
+		padding-bottom: 16px;
 		border-top-width: 1px;
 		border-top-color: #f1f5f9;
 	}
@@ -794,5 +900,131 @@
 		padding-bottom: 16px;
 		border-radius: 8px;
 		box-shadow: 0 12px 24px rgba(17, 82, 212, 0.2);
+	}
+
+	.amount-mask {
+		position: fixed;
+		left: 0;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		background-color: rgba(0, 0, 0, 0.35);
+		z-index: 90;
+	}
+
+	.amount-sheet {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #ffffff;
+		border-top-left-radius: 16px;
+		border-top-right-radius: 16px;
+		overflow: hidden;
+		z-index: 100;
+		padding-bottom: 0px;
+	}
+
+	.amount-sheet-header {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding-left: 16px;
+		padding-right: 16px;
+		height: 48px;
+		border-bottom-width: 1px;
+		border-bottom-color: #f1f5f9;
+	}
+
+	.amount-sheet-title {
+		font-size: 14px;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	.amount-sheet-btn {
+		font-size: 14px;
+		font-weight: 600;
+		color: #64748b;
+		min-width: 44px;
+	}
+
+	.amount-sheet-btn-primary {
+		color: #1152d4;
+		text-align: right;
+	}
+
+	.amount-sheet-display {
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		padding-top: 18px;
+		padding-bottom: 12px;
+	}
+
+	.amount-sheet-currency {
+		font-size: 20px;
+		font-weight: 700;
+		color: #1152d4;
+		margin-right: 6px;
+	}
+
+	.amount-sheet-value {
+		font-size: 36px;
+		font-weight: 700;
+		color: #0f172a;
+	}
+
+	.keypad {
+		padding-left: 16px;
+		padding-right: 16px;
+		padding-top: 12px;
+		padding-bottom: 16px;
+	}
+
+	.keypad-row {
+		flex-direction: row;
+		justify-content: space-between;
+		margin-bottom: 10px;
+	}
+
+	.keypad-key {
+		flex: 1;
+		height: 46px;
+		background-color: #f1f5f9;
+		border-radius: 12px;
+		flex-direction: row;
+		align-items: center;
+		justify-content: center;
+		margin-right: 10px;
+	}
+
+	.keypad-key:last-child {
+		margin-right: 0;
+	}
+
+	.keypad-key.secondary {
+		background-color: #ffffff;
+		border-width: 1px;
+		border-color: #e5e7eb;
+	}
+
+	.keypad-key.wide {
+		flex: 2;
+		background-color: #1152d4;
+	}
+
+	.keypad-key.danger {
+		background-color: #fee2e2;
+	}
+
+	.keypad-key-text {
+		font-size: 16px;
+		font-weight: 700;
+		color: #0f172a;
+	}
+
+	.keypad-key.wide .keypad-key-text {
+		color: #ffffff;
 	}
 </style>

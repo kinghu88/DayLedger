@@ -4,7 +4,7 @@
 			<view class="header-top">
 				<text class="header-title">本月收支</text>
 				<view class="header-date">
-					<text>{{ currentMonth }}</text>
+					<text class="header-date-text">{{ currentMonth }}</text>
 					<text class="arrow">▼</text>
 				</view>
 			</view>
@@ -68,11 +68,27 @@
 				</view>
 				<view class="transactions-list">
 					<view v-if="recentTransactions.length === 0" class="empty-state">
-						<text>暂无交易记录</text>
+						<text class="empty-state-text">暂无交易记录</text>
 					</view>
-					<view v-for="item in recentTransactions" :key="item.id" class="transaction-item" @click="goToTransactionDetail(item.id)">
-						<view class="transaction-left">
-							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
+					<view
+						v-for="item in recentTransactions"
+						:key="item.id"
+						class="swipe-row"
+						@touchstart="onSwipeStart(item.id, $event)"
+						@touchmove="onSwipeMove($event)"
+						@touchend="onSwipeEnd"
+						@touchcancel="onSwipeEnd"
+						@mousedown="onSwipeStart(item.id, $event)"
+						@mousemove="onSwipeMove($event)"
+						@mouseup="onSwipeEnd"
+						@mouseleave="onSwipeEnd"
+					>
+						<view class="swipe-delete" :class="{ visible: isDeleteVisible(item.id) }" @click.stop="onDeleteExpense(item.id)">
+							<text class="swipe-delete-text">删除</text>
+						</view>
+						<view class="transaction-item" :style="{ transform: `translateX(${getSwipeTranslateX(item.id)}px)` }" @click="onTransactionTap(item.id)">
+							<view class="transaction-left">
+								<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
 								<svg v-if="item.iconKind === 'cart'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 								</svg>
@@ -91,15 +107,16 @@
 								<svg v-else class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 								</svg>
+								</view>
+								<view class="transaction-info">
+									<text class="transaction-title">{{ item.description }}</text>
+									<text class="transaction-sub">{{ item.subTitle }}</text>
+								</view>
 							</view>
-							<view class="transaction-info">
-								<text class="transaction-title">{{ item.description }}</text>
-								<text class="transaction-sub">{{ item.subTitle }}</text>
-							</view>
+							<text class="transaction-amount" :style="{ color: item.type === 'income' ? '#10b981' : '#ef4444' }">
+								{{ item.type === 'income' ? '+' : '-' }}{{ formatCurrency(Number(item.amount)) }}
+							</text>
 						</view>
-						<text class="transaction-amount" :style="{ color: item.type === 'income' ? '#10b981' : '#ef4444' }">
-							{{ item.type === 'income' ? '+' : '-' }}{{ formatCurrency(Number(item.amount)) }}
-						</text>
 					</view>
 				</view>
 			</view>
@@ -148,28 +165,38 @@
 
 <script setup lang="uts">
 	import { ref, computed } from 'vue'
-	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
+	import { seedTransactionsIfEmpty, getTransactions, removeExpense } from '../../services/transactions'
 
 	const currentMonth = computed(() => {
 		const now = new Date()
 		return `${now.getFullYear()}年${now.getMonth() + 1}月`
 	})
 
-	const transactionsData = ref<any[]>([])
+	const dataList = ref<any[]>([])
+	const DELETE_WIDTH = 80
+	const DELETE_THRESHOLD = 60
+	const swipeOpenId = ref<string>('')
+	const swipeTrackingId = ref<string>('')
+	const swipeStartX = ref<number>(0)
+	const swipeBaseOffset = ref<number>(0)
+	const swipeOffset = ref<number>(0)
 
 	function loadTransactions() {
 		seedTransactionsIfEmpty()
-		transactionsData.value = getTransactions() as any[]
+		dataList.value = getTransactions() as any[]
+		swipeOpenId.value = ''
+		swipeTrackingId.value = ''
+		swipeOffset.value = 0
 	}
 
 	const income = computed(() => {
-		return transactionsData.value
+		return dataList.value
 			.filter((t: any) => t.type === 'income')
 			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 	})
 
 	const expense = computed(() => {
-		return transactionsData.value
+		return dataList.value
 			.filter((t: any) => t.type === 'expense')
 			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
 	})
@@ -198,7 +225,7 @@
 	}
 
 	function iconKindFor(t: any): string {
-		const category = String(t.category || '')
+		const category = t.category != null ? String(t.category) : ''
 		if (t.type === 'income') return 'cash'
 		if (category.includes('餐') || category.includes('饮')) return 'cart'
 		if (category.includes('购')) return 'cart'
@@ -209,16 +236,92 @@
 	}
 
 	const recentTransactions = computed(() => {
-		return [...transactionsData.value]
+		return [...dataList.value]
 			.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
 			.slice(0, 4)
 			.map((t: any) => ({
 				...t,
 				dateStr: formatDate(t.date),
 				iconKind: iconKindFor(t),
-				subTitle: `${t.category || ''} • ${formatDate(t.date)}`
+				subTitle: `${t.category != null ? String(t.category) : ''} • ${formatDate(t.date)}`
 			}))
 	})
+
+	function getEventX(e: any): number {
+		const touch = e?.touches?.[0] ?? e?.changedTouches?.[0]
+		if (touch != null && touch.clientX != null) return Number(touch.clientX)
+		if (e != null && e.clientX != null) return Number(e.clientX)
+		return 0
+	}
+
+	function clampOffset(v: number): number {
+		if (v < 0) return 0
+		if (v > DELETE_WIDTH) return DELETE_WIDTH
+		return v
+	}
+
+	function onSwipeStart(id: string, e: any) {
+		if (swipeOpenId.value.length > 0 && swipeOpenId.value !== id) {
+			swipeOpenId.value = ''
+		}
+		swipeTrackingId.value = id
+		swipeStartX.value = getEventX(e)
+		swipeBaseOffset.value = swipeOpenId.value === id ? DELETE_WIDTH : 0
+		swipeOffset.value = swipeBaseOffset.value
+	}
+
+	function onSwipeMove(e: any) {
+		if (swipeTrackingId.value.length === 0) return
+		const x = getEventX(e)
+		const delta = x - swipeStartX.value
+		swipeOffset.value = clampOffset(swipeBaseOffset.value - delta)
+	}
+
+	function onSwipeEnd() {
+		if (swipeTrackingId.value.length === 0) return
+		const id = swipeTrackingId.value
+		swipeOpenId.value = swipeOffset.value >= DELETE_THRESHOLD ? id : ''
+		swipeTrackingId.value = ''
+		swipeOffset.value = 0
+		swipeBaseOffset.value = 0
+	}
+
+	function getSwipeOffset(id: string): number {
+		if (swipeTrackingId.value === id) return swipeOffset.value
+		if (swipeOpenId.value === id) return DELETE_WIDTH
+		return 0
+	}
+
+	function getSwipeTranslateX(id: string): number {
+		return -getSwipeOffset(id)
+	}
+
+	function isDeleteVisible(id: string): boolean {
+		if (swipeTrackingId.value === id) return swipeOffset.value > 0
+		return swipeOpenId.value === id
+	}
+
+	function onTransactionTap(id: string) {
+		if (swipeOpenId.value.length > 0) {
+			swipeOpenId.value = ''
+			return
+		}
+		goToTransactionDetail(id)
+	}
+
+	function onDeleteExpense(id: string) {
+		const prev = [...dataList.value]
+		dataList.value = prev.filter((t: any) => String(t.id) !== String(id))
+		swipeOpenId.value = ''
+		const ok = removeExpense(id)
+		if (ok) {
+			uni.showToast({ title: '已删除', icon: 'none', duration: 1200 })
+			loadTransactions()
+			return
+		}
+		dataList.value = prev
+		uni.showToast({ title: '删除失败', icon: 'none', duration: 1200 })
+	}
 
 	onShow(() => {
 		loadTransactions()
@@ -251,7 +354,7 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100%;
 		background-color: #f8fafc;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
@@ -284,7 +387,7 @@
 		border-radius: 8px;
 	}
 
-	.header-date text {
+	.header-date-text {
 		font-size: 14px;
 		color: #ffffff;
 		margin-right: 4px;
@@ -306,7 +409,6 @@
 	.stat-label {
 		font-size: 12px;
 		color: rgba(255, 255, 255, 0.7);
-		text-transform: uppercase;
 		margin-bottom: 4px;
 	}
 
@@ -321,11 +423,7 @@
 		padding-left: 20px;
 		padding-right: 20px;
 		padding-top: 24px;
-		/* keep content above fixed bottom nav */
-		/* padding-bottom: calc(96px + env(safe-area-inset-bottom)); */
-		padding-bottom: calc(70px + env(safe-area-inset-bottom)); 
-		-ms-overflow-style: none;
-		scrollbar-width: none;
+		padding-bottom: 90px;
 	}
 	
 	.content::-webkit-scrollbar {
@@ -351,7 +449,6 @@
 		font-size: 14px;
 		font-weight: 600;
 		color: #64748b;
-		text-transform: uppercase;
 		margin-bottom: 16px;
 	}
 
@@ -384,7 +481,7 @@
 		width: 100%;
 		height: 100%;
 		border-radius: 50%;
-		background: conic-gradient(#1152d4 0% 35%, #3b82f6 35% 60%, #93c5fd 60% 85%, #e2e8f0 85% 100%);
+		background-color: #1152d4;
 		align-items: center;
 		justify-content: center;
 	}
@@ -441,15 +538,55 @@
 		margin-top: 12px;
 	}
 
+	.swipe-row {
+		position: relative;
+		overflow: hidden;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		background-color: #ffffff;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.swipe-delete {
+		position: absolute;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		width: 80px;
+		background-color: #FF3B30;
+		align-items: center;
+		justify-content: center;
+		z-index: 0;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.swipe-delete.visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.swipe-delete-text {
+		color: #ffffff;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
 	.transaction-item {
+		position: relative;
+		z-index: 1;
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
 		padding: 16px;
 		background-color: #ffffff;
-		border-radius: 8px;
-		margin-bottom: 12px;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+		border-radius: 8px 0 0 8px;
+		overflow: hidden;
+		background-clip: border-box;
+		transition-property: transform;
+		transition-duration: 180ms;
+		transition-timing-function: ease;
+		transform: translateZ(0);
 	}
 
 	.transaction-left {
@@ -497,7 +634,7 @@
 		padding: 40px;
 	}
 
-	.empty-state text {
+	.empty-state-text {
 		color: #94a3b8;
 		font-size: 14px;
 	}
@@ -511,7 +648,6 @@
 		background-color: #ffffff;
 		border-top-width: 1px;
 		border-top-color: #e5e7eb;
-		/* match prototype: solid bar + divider line (no overlay shadow) */
 		box-shadow: none;
 		flex-direction: row;
 		justify-content: space-between;
@@ -519,7 +655,7 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: calc(12px + env(safe-area-inset-bottom));
+		padding-bottom: 12px;
 		z-index: 40;
 		overflow: visible;
 	}

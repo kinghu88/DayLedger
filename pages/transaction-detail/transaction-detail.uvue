@@ -21,8 +21,8 @@
 			
 			<view class="type-section">
 				<view class="type-toggle">
-					<view class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'"><text>支出</text></view>
-					<view class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'"><text>收入</text></view>
+					<view class="type-btn" :class="{ active: type === 'expense' }" @click="type = 'expense'"><text class="type-btn-text">支出</text></view>
+					<view class="type-btn" :class="{ active: type === 'income' }" @click="type = 'income'"><text class="type-btn-text">收入</text></view>
 				</view>
 			</view>
 			
@@ -32,13 +32,13 @@
 					<view v-for="cat in categories" :key="cat.key" class="category-item" :class="{ selected: isCategoryTileSelected(cat.key) }" @click="onCategoryTileClick(cat.key)">
 						<view
 							class="category-icon"
-							:class="{ dashed: !!cat.dashed && !(cat.key === 'other' && isCategoryTileSelected('other') && !!selectedMoreCategory) }"
+							:class="{ dashed: !!cat.dashed && !(cat.key === 'other' && isCategoryTileSelected('other') && selectedMoreCategory.length > 0) }"
 							:style="{
 								backgroundColor: isCategoryTileSelected(cat.key)
-									? (cat.key === 'other' ? (selectedMoreCategory ? moreCategoryBg(selectedMoreCategory) : '#e7eefa') : cat.bg)
+									? (cat.key === 'other' ? (selectedMoreCategory.length > 0 ? moreCategoryBg(selectedMoreCategory) : '#e7eefa') : cat.bg)
 									: (cat.key === 'other' ? 'transparent' : '#f1f5f9'),
 								color: isCategoryTileSelected(cat.key)
-									? (cat.key === 'other' ? (selectedMoreCategory ? moreCategoryColor(selectedMoreCategory) : '#1152d4') : cat.color)
+									? (cat.key === 'other' ? (selectedMoreCategory.length > 0 ? moreCategoryColor(selectedMoreCategory) : '#1152d4') : cat.color)
 									: '#94a3b8'
 							}"
 						>
@@ -68,7 +68,7 @@
 								<path d="M12 6v6m0 0v6m0-6h6m-6 0H6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 							</svg>
 						</view>
-						<text class="category-name">{{ cat.key === 'other' && isCategoryTileSelected('other') && selectedMoreCategory ? moreCategoryName(selectedMoreCategory) : cat.name }}</text>
+						<text class="category-name">{{ cat.key === 'other' && isCategoryTileSelected('other') && selectedMoreCategory.length > 0 ? moreCategoryName(selectedMoreCategory) : cat.name }}</text>
 					</view>
 				</view>
 			</view>
@@ -236,7 +236,7 @@
 		const y = Number(parts[0])
 		const m = Number(parts[1])
 		const d = Number(parts[2])
-		if (!y || !m || !d) return null
+		if (isNaN(y) || isNaN(m) || isNaN(d) || y <= 0 || m <= 0 || d <= 0) return null
 		return [y, m, d]
 	}
 	
@@ -333,7 +333,7 @@
 	
 	function onDatePickerChange(e: any) {
 		const next = e?.detail?.value as number[] | null
-		if (!next || next.length < 3) return
+		if (next == null || next.length < 3) return
 		const yearIdx = next[0] ?? 0
 		const monthIdx = next[1] ?? 0
 		let dayIdx = next[2] ?? 0
@@ -347,49 +347,57 @@
 	function loadTransaction() {
 		seedTransactionsIfEmpty()
 		const tx = getTransactionById(transactionId.value) as any | null
-		if (!tx) return
+		if (tx == null) return
 		
 		originalTransaction.value = tx
-		type.value = String(tx.type || 'expense')
+		type.value = tx.type != null ? String(tx.type) : 'expense'
 		amount.value = String(tx.amount ?? '')
-		date.value = String(tx.date || new Date().toISOString().split('T')[0])
-		note.value = String(tx.note || tx.description || '')
-		setSelectedCategoryKey(categoryKeyFromName(String(tx.category || '其他')))
+		date.value = tx.date != null ? String(tx.date) : new Date().toISOString().split('T')[0]
+		const txNote = tx.note != null ? String(tx.note) : ''
+		const txDesc = tx.description != null ? String(tx.description) : ''
+		note.value = txNote.length > 0 ? txNote : txDesc
+		setSelectedCategoryKey(categoryKeyFromName(tx.category != null ? String(tx.category) : '其他'))
 	}
 	
 	onLoad((options: any) => {
-		transactionId.value = String(options?.id || '')
-		if (!transactionId.value) {
+		transactionId.value = options != null && options.id != null ? String(options.id) : ''
+		if (transactionId.value.length === 0) {
 			uni.showToast({ title: '缺少账目ID', icon: 'none' })
 			setTimeout(() => goBack(), 300)
 			return
 		}
 		loadTransaction()
-		if (!originalTransaction.value) {
+		if (originalTransaction.value == null) {
 			uni.showToast({ title: '账目不存在', icon: 'none' })
 			setTimeout(() => goBack(), 300)
 		}
 	})
 	
 	onShow(() => {
-		if (!transactionId.value) return
+		if (transactionId.value.length === 0) return
 		loadTransaction()
 	})
 	
 	function saveTransaction() {
-		if (!originalTransaction.value) return
+		if (originalTransaction.value == null) return
 		
 		const amountNum = Number(amount.value)
-		if (!amountNum || amountNum <= 0) {
+		if (isNaN(amountNum) || amountNum <= 0) {
 			uni.showToast({ title: '请输入有效金额', icon: 'none' })
 			return
 		}
 		
-		const selectedKey = selectedCategory.value === 'other' ? (selectedMoreCategory.value || 'other') : selectedCategory.value
+		const selectedKey = selectedCategory.value === 'other'
+			? (selectedMoreCategory.value.length > 0 ? selectedMoreCategory.value : 'other')
+			: selectedCategory.value
 		const selected = [...categories.filter((c: any) => c.key !== 'other'), ...moreCategories].find((c: any) => c.key === selectedKey)
 		const categoryName = selected ? String(selected.name) : '其他'
 		const iconBg = type.value === 'income' ? '#dcfce7' : (selected ? String(selected.bg) : '#f1f5f9')
 		const iconColor = type.value === 'income' ? '#16a34a' : (selected ? String(selected.color) : '#64748b')
+		const baseDescription = String(originalTransaction.value.description)
+		const nextDescription = note.value.length > 0 ? note.value : (baseDescription.length > 0 ? baseDescription : `新${type.value === 'income' ? '收入' : '支出'}`)
+		const baseIconText = originalTransaction.value.iconText != null ? String(originalTransaction.value.iconText) : ''
+		const nextIconText = type.value === 'income' ? '💰' : (baseIconText.length > 0 ? baseIconText : '💸')
 		
 		const updated = {
 			...originalTransaction.value,
@@ -398,14 +406,14 @@
 			category: categoryName,
 			date: date.value,
 			note: note.value,
-			description: note.value || originalTransaction.value.description || `新${type.value === 'income' ? '收入' : '支出'}`,
-			iconText: type.value === 'income' ? '💰' : (originalTransaction.value.iconText || '💸'),
+			description: nextDescription,
+			iconText: nextIconText,
 			iconBg,
 			iconColor
 		}
 	
 		const saved = updateTransactionById(transactionId.value, () => updated) as any | null
-		if (!saved) {
+		if (saved == null) {
 			uni.showToast({ title: '账目不存在', icon: 'none' })
 			return
 		}
@@ -419,7 +427,7 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100%;
 		background-color: #ffffff;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
@@ -434,8 +442,6 @@
 		padding-bottom: 12px;
 		border-bottom-width: 1px;
 		border-bottom-color: #f1f5f9;
-		position: sticky;
-		top: 0;
 		background-color: #ffffff;
 		z-index: 10;
 	}
@@ -471,8 +477,6 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-bottom: 24px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
 	}
 	
 	.content::-webkit-scrollbar {
@@ -515,7 +519,6 @@
 		text-align: center;
 		width: 100%;
 		border: none;
-		outline: none;
 	}
 	
 	.type-section {
@@ -540,7 +543,7 @@
 		color: #64748b;
 	}
 	
-	.type-btn text {
+	.type-btn-text {
 		font-size: 14px;
 		font-weight: 600;
 	}
@@ -559,7 +562,6 @@
 		font-size: 12px;
 		font-weight: bold;
 		color: #94a3b8;
-		text-transform: uppercase;
 		margin-bottom: 16px;
 		letter-spacing: 0.8px;
 	}
@@ -644,7 +646,6 @@
 		font-size: 10px;
 		font-weight: bold;
 		color: #94a3b8;
-		text-transform: uppercase;
 		margin-bottom: 4px;
 		letter-spacing: 0.8px;
 	}
@@ -655,7 +656,6 @@
 		color: #334155;
 		width: 100%;
 		border: none;
-		outline: none;
 		background-color: transparent;
 	}
 	
@@ -669,7 +669,7 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 16px;
-		padding-bottom: calc(16px + env(safe-area-inset-bottom));
+		padding-bottom: 16px;
 		border-top-width: 1px;
 		border-top-color: #f1f5f9;
 		background-color: #ffffff;
@@ -708,7 +708,7 @@
 		border-top-right-radius: 16px;
 		overflow: hidden;
 		z-index: 100;
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-bottom: 0px;
 	}
 	
 	.date-sheet-header {
@@ -771,7 +771,7 @@
 		border-top-right-radius: 16px;
 		overflow: hidden;
 		z-index: 100;
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-bottom: 0px;
 	}
 	
 	.category-sheet-header {
@@ -804,8 +804,6 @@
 	
 	.category-sheet-scroll {
 		max-height: 420px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
 	}
 	
 	.category-sheet-scroll::-webkit-scrollbar {

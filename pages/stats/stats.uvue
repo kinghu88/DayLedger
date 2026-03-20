@@ -10,64 +10,172 @@
 				</view>
 			</view>
 			<view class="period-toggle">
-				<view class="period-btn" :class="{ active: period === 'week' }" @click="period = 'week'"><text>周</text></view>
-				<view class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'"><text>月</text></view>
-				<view class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'"><text>年</text></view>
+				<view class="period-btn" :class="{ active: period === 'week' }" @click="period = 'week'"><text class="period-btn-text" :class="{ active: period === 'week' }">周</text></view>
+				<view class="period-btn" :class="{ active: period === 'month' }" @click="period = 'month'"><text class="period-btn-text" :class="{ active: period === 'month' }">月</text></view>
+				<view class="period-btn" :class="{ active: period === 'year' }" @click="period = 'year'"><text class="period-btn-text" :class="{ active: period === 'year' }">年</text></view>
 			</view>
-			<scroll-view v-if="period === 'month'" class="month-scroll" scroll-x="true" :show-scrollbar="false" :scroll-into-view="monthScrollIntoView" scroll-with-animation="true">
-				<view class="month-list">
-					<text v-for="m in monthItems" :id="`month-${m.key}`" :key="m.key" class="month-btn" :class="{ active: m.key === selectedMonthKey, current: m.key === currentMonthKey }" @click="selectedMonthKey = m.key">{{ m.month }}月</text>
+			<view v-if="period === 'month'" class="month-switcher">
+				<view
+					class="month-viewport"
+					@touchstart="onMonthTouchStart"
+					@touchmove="onMonthTouchMove"
+					@touchend="onMonthTouchEnd"
+					@touchcancel="onMonthTouchEnd"
+					@mousedown="onMonthMouseDown"
+					@mousemove="onMonthMouseMove"
+					@mouseup="onMonthMouseUp"
+					@mouseleave="onMonthMouseUp"
+				>
+					<view class="month-track" :style="{ width: `${monthTrackWidthPercent}%`, transform: `translateX(-${monthOffsetPercent}%)`, transitionDuration: monthTransitionDuration }">
+						<view v-for="m in monthItems" :key="m.key" class="month-cell" :style="{ width: `${monthCellWidthPercent}%` }">
+							<text class="month-btn" :class="{ active: m.key === selectedMonthKey, current: m.key === currentMonthKey }" @click="selectedMonthKey = m.key">{{ m.year === currentYear ? (m.month + '月') : (String(m.year).slice(2) + '/' + m.month + '月') }}</text>
+						</view>
+					</view>
 				</view>
-			</scroll-view>
+			</view>
+			<view v-if="period === 'week'" class="month-switcher">
+				<view
+					class="month-viewport"
+					@touchstart="onWeekTouchStart"
+					@touchmove="onWeekTouchMove"
+					@touchend="onWeekTouchEnd"
+					@touchcancel="onWeekTouchEnd"
+					@mousedown="onWeekMouseDown"
+					@mousemove="onWeekMouseMove"
+					@mouseup="onWeekMouseUp"
+					@mouseleave="onWeekMouseUp"
+				>
+					<view class="month-track" :style="{ width: `${weekTrackWidthPercent}%`, transform: `translateX(-${weekOffsetPercent}%)`, transitionDuration: weekTransitionDuration }">
+						<view v-for="w in weekItems" :key="w.key" class="month-cell" :style="{ width: `${weekCellWidthPercent}%` }">
+							<text class="month-btn" :class="{ active: w.key === selectedWeekKey, current: w.key === currentWeekKey }" @click="selectedWeekKey = w.key">{{ weekDisplayLabel(w) }}</text>
+						</view>
+					</view>
+				</view>
+
+			</view>
+			<view v-if="period === 'year'" class="month-switcher">
+
+				<view
+					class="month-viewport"
+					@touchstart="onYearTouchStart"
+					@touchmove="onYearTouchMove"
+					@touchend="onYearTouchEnd"
+					@touchcancel="onYearTouchEnd"
+					@mousedown="onYearMouseDown"
+					@mousemove="onYearMouseMove"
+					@mouseup="onYearMouseUp"
+					@mouseleave="onYearMouseUp"
+				>
+					<view class="month-track" :style="{ width: `${yearTrackWidthPercent}%`, transform: `translateX(-${yearOffsetPercent}%)`, transitionDuration: yearTransitionDuration }">
+						<view v-for="y in yearItems" :key="y.key" class="month-cell" :style="{ width: `${yearCellWidthPercent}%` }">
+							<text class="month-btn" :class="{ active: y.year === selectedYear, current: y.year === currentYear }" @click="selectedYear = y.year">{{ y.year }}年</text>
+						</view>
+					</view>
+				</view>
+			</view>
 		</header>
 
 		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
+			<view v-if="loadError" class="error-state">
+				<text class="error-text">{{ loadError }}</text>
+				<text class="error-retry" @click="refreshStats(true)">重试</text>
+			</view>
 			<view class="section">
 				<view class="section-header">
-					<text class="section-title">{{ chartTitle }}</text>
-					<text class="section-period">{{ chartPeriod }}</text>
+					<view class="section-header-left">
+						<text class="section-title">{{ chartTitle }}</text>
+						<text class="section-period">{{ chartPeriod }}</text>
+					</view>
+
 				</view>
 				<view class="chart-container">
-					<view v-if="hoveredBarIndex >= 0" class="chart-tooltip">
-						<text class="chart-tooltip-text">{{ barData[hoveredBarIndex].label }} ￥{{ formatMoney(barData[hoveredBarIndex].amount, 2) }}</text>
+					<view v-if="hoveredBarIndex >= 0 && hoveredBarIndex < statsView.barData.length" class="chart-tooltip">
+						<text class="chart-tooltip-text">{{ statsView.barData[hoveredBarIndex].label }} ￥{{ formatMoney(statsView.barData[hoveredBarIndex].amount, 2) }}</text>
 					</view>
 					<view class="bar-chart">
-						<view v-for="(item, index) in barData" :key="index" class="bar-item">
-							<view
-								class="bar"
-								:style="{ height: item.height + '%', backgroundColor: item.color }"
-								@mouseenter="onBarEnter(index)"
-								@mouseleave="onBarLeave"
-								@touchstart="onBarTap(index)"
-								@click="onBarTap(index)"
-							></view>
+						<view v-for="(item, index) in statsView.barData" :key="index" class="bar-item">
+							<view class="bar-wrap">
+								<view
+									class="bar"
+									:style="{ height: item.height + '%', backgroundColor: item.color }"
+									@mouseenter="onBarEnter(index)"
+									@mouseleave="onBarLeave"
+									@touchstart="onBarTap(index)"
+									@click="onBarTap(index)"
+								></view>
+							</view>
 							<text class="bar-label">{{ item.label }}</text>
 						</view>
 					</view>
 				</view>
 			</view>
 
-			<view class="section">
+			<view v-if="period === 'month'" class="section">
 				<view class="budget-header">
 					<view class="budget-info">
-						<text class="section-title">本月预算</text>
-						<text class="budget-used">{{ budgetPercent }}% of ￥{{ formatMoney(budgetAmount, 0) }} 已用</text>
+						<text class="section-title">月度预算</text>
+						<text class="budget-used">{{ statsView.budgetPercent }}% of ￥{{ formatMoney(statsView.budgetAmount, 0) }} 已用</text>
 					</view>
-					<text class="budget-value">￥{{ formatMoney(totalExpense, 2) }}</text>
+					<text class="budget-value">￥{{ formatMoney(statsView.totalExpense, 2) }}</text>
 				</view>
 				<view class="progress-bar">
-					<view class="progress-fill" :style="{ width: Math.min(budgetPercent, 100) + '%' }"></view>
+					<view class="progress-fill" :style="{ width: Math.min(statsView.budgetPercent, 100) + '%' }"></view>
 				</view>
-				<text class="budget-remaining">剩余 ￥{{ formatMoney(Math.max(budgetAmount - totalExpense, 0), 0) }}</text>
+				<text class="budget-remaining">剩余 ￥{{ formatMoney(Math.max(statsView.budgetAmount - statsView.totalExpense, 0), 0) }}</text>
+			</view>
+
+			<view v-else-if="period === 'week'" class="section">
+				<view class="summary-grid">
+					<view class="summary-item">
+						<text class="summary-label">总支出</text>
+						<text class="summary-value">￥{{ formatMoney(statsView.totalExpense, 2) }}</text>
+					</view>
+					<view class="summary-item">
+						<text class="summary-label">日均支出</text>
+						<text class="summary-value">￥{{ formatMoney(statsView.avgPerDay, 2) }}</text>
+					</view>
+					<view class="summary-item">
+						<text class="summary-label">环比</text>
+						<text class="summary-value">{{ statsView.ringRate == null ? '--' : statsView.ringRate + '%' }}</text>
+					</view>
+				</view>
+			</view>
+
+			<view v-else class="section">
+				<view class="summary-grid">
+					<view class="summary-item">
+						<text class="summary-label">全年支出</text>
+						<text class="summary-value">￥{{ formatMoney(statsView.totalExpense, 2) }}</text>
+					</view>
+					<view class="summary-item">
+						<text class="summary-label">预算完成度</text>
+						<text class="summary-value">{{ statsView.budgetPercent }}%</text>
+					</view>
+					<view class="summary-item">
+						<text class="summary-label">年度对比</text>
+						<text class="summary-value">{{ statsView.compareRate == null ? '--' : statsView.compareRate + '%' }}</text>
+					</view>
+				</view>
+				<view class="year-compare-row">
+					<text class="year-compare-label">对比年份</text>
+					<picker mode="selector" :range="compareYearLabels" @change="onCompareYearPicker">
+						<text class="year-compare-value">{{ compareYearDisplay }}</text>
+					</picker>
+					<text v-if="compareYear != null" class="year-compare-clear" @click="compareYear = null">清除</text>
+				</view>
+				<view class="export-row">
+					<text class="export-btn" @click="exportYearExcel">导出Excel</text>
+					<text class="export-btn" @click="exportYearPdf">导出PDF</text>
+				</view>
 			</view>
 
 			<view class="category-section">
-				<text class="category-section-title">本月主要支出</text>
+				<text class="category-section-title">{{ period === 'week' ? '主要支出 TOP5' : (period === 'year' ? '全年主要支出' : '主要支出') }}</text>
 				<view class="category-list">
-					<view v-if="categoryStats.length === 0" class="empty-state">
-						<text>本月暂无支出记录</text>
+					<view v-if="statsView.categoryStats.length === 0" class="empty-state">
+						<text class="empty-state-text">{{ period === 'week' ? '本周暂无支出记录' : (period === 'year' ? '本年暂无支出记录' : '本月暂无支出记录') }}</text>
 					</view>
-					<view v-for="cat in categoryStats" :key="cat.name" class="category-item">
+					<view v-for="cat in statsView.categoryStats" :key="cat.name" class="category-item">
 						<view class="category-left">
 							<view class="category-icon" :style="{ backgroundColor: cat.bg, color: cat.color }">
 								<svg v-if="cat.iconKind === 'cart'" class="category-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,6 +194,9 @@
 							<view class="category-info">
 								<text class="category-name">{{ cat.name }}</text>
 								<text class="category-percent">占比 {{ cat.percent }}%</text>
+								<view class="category-progress">
+									<view class="category-progress-fill" :style="{ width: Math.min(cat.percent, 100) + '%', backgroundColor: cat.color }"></view>
+								</view>
 							</view>
 						</view>
 						<text class="category-amount">￥{{ formatMoney(cat.amount, 2) }}</text>
@@ -136,7 +247,7 @@
 </template>
 
 <script setup lang="uts">
-	import { ref, computed, watch, nextTick } from 'vue'
+	import { ref, computed, watch } from 'vue'
 	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
 
 	const period = ref<string>('month')
@@ -144,6 +255,12 @@
 	const nowForPeriod = new Date()
 	const currentYear = nowForPeriod.getFullYear()
 	const currentMonth = nowForPeriod.getMonth() + 1
+
+	type MonthKeyParts = { year: number; month: number }
+	type WeekRange = { start: Date; end: Date }
+	type MonthItem = { year: number; month: number; key: string }
+	type WeekItem = { key: string; start: Date }
+	type YearItem = { year: number; key: string }
 	
 	function pad2(n: number): string {
 		return String(n).padStart(2, '0')
@@ -153,68 +270,546 @@
 		return `${year}-${pad2(month)}`
 	}
 	
-	function parseMonthKey(key: string): { year: number; month: number } | null {
-		const parts = String(key || '').split('-')
+	function parseMonthKey(key: string): MonthKeyParts | null {
+		const parts = key.split('-')
 		if (parts.length !== 2) return null
 		const y = Number(parts[0])
 		const m = Number(parts[1])
-		if (!y || !m) return null
+		if (isNaN(y) || isNaN(m) || y <= 0 || m <= 0) return null
 		return { year: y, month: m }
 	}
-	
-	const currentMonthKey = monthKey(currentYear, currentMonth)
-	const selectedMonthKey = ref<string>(currentMonthKey)
-	const monthScrollIntoView = ref<string>('')
 
-	const transactionsData = ref<any[]>([])
-	const hoveredBarIndex = ref<number>(-1)
-	const tooltipTimer = ref<any | null>(null)
-	
-	function scrollMonthToCurrent() {
-		monthScrollIntoView.value = `month-${currentMonthKey}`
-		setTimeout(() => {
-			monthScrollIntoView.value = ''
-		}, 0)
-	}
-
-	function loadTransactions() {
-		seedTransactionsIfEmpty()
-		transactionsData.value = getTransactions() as any[]
-	}
-
-	onShow(() => {
-		loadTransactions()
-	})
-
-	const chartTitle = computed(() => {
-		if (period.value === 'week') return '消费趋势 (本周)'
-		if (period.value === 'year') return '消费趋势 (当年)'
-		return '消费趋势 (本月)'
-	})
-
-	function dateFromISO(iso: string): Date | null {
-		const parts = String(iso || '').split('-')
-		if (parts.length !== 3) return null
-		const y = Number(parts[0])
-		const m = Number(parts[1])
-		const d = Number(parts[2])
-		if (!y || !m || !d) return null
-		return new Date(y, m - 1, d)
-	}
-	
-	const monthItems = computed(() => {
-		const window: { year: number; month: number; key: string }[] = []
-		for (let i = 11; i >= 0; i--) {
-			const d = new Date(currentYear, currentMonth - 1 - i, 1)
-			window.push({ year: d.getFullYear(), month: d.getMonth() + 1, key: monthKey(d.getFullYear(), d.getMonth() + 1) })
-		}
-		return window.map((m) => ({ key: m.key, year: m.year, month: m.month }))
-	})
-	
 	function startOfWeekMonday(date: Date): Date {
 		const day = date.getDay()
 		const diff = day === 0 ? 6 : day - 1
 		return new Date(date.getFullYear(), date.getMonth(), date.getDate() - diff)
+	}
+
+	function isoDateKey(date: Date): string {
+		return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+	}
+	
+	function weekKeyFromDate(date: Date): string {
+		return isoDateKey(startOfWeekMonday(date))
+	}
+	
+	function parseISODateKey(key: string): Date | null {
+		const parts = key.split('-')
+		if (parts.length !== 3) return null
+		const y = Number(parts[0])
+		const m = Number(parts[1])
+		const d = Number(parts[2])
+		if (isNaN(y) || isNaN(m) || isNaN(d) || y <= 0 || m <= 0 || d <= 0) return null
+		return new Date(y, m - 1, d)
+	}
+	
+	function weekRangeFromKey(key: string): WeekRange | null {
+		const start = parseISODateKey(key)
+		if (start == null) return null
+		const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
+		return { start, end }
+	}
+	
+	const currentMonthKey = monthKey(currentYear, currentMonth)
+	const currentWeekKey = weekKeyFromDate(nowForPeriod)
+	const lastWeekKey = weekKeyFromDate(new Date(nowForPeriod.getFullYear(), nowForPeriod.getMonth(), nowForPeriod.getDate() - 7))
+	const selectedMonthKey = ref<string>(currentMonthKey)
+	const selectedWeekKey = ref<string>(currentWeekKey)
+	const selectedYear = ref<number>(currentYear)
+	const compareYear = ref<number | null>(null)
+	const visibleMonthCount = 6
+	const monthStartIndex = ref<number>(0)
+	const isMonthDragging = ref<boolean>(false)
+	const monthTransitionDuration = computed(() => (isMonthDragging.value ? '0ms' : '220ms'))
+	const monthSwipeStartX = ref<number>(0)
+	const monthSwipeLastX = ref<number>(0)
+	const weekStartIndex = ref<number>(0)
+	const isWeekDragging = ref<boolean>(false)
+	const weekTransitionDuration = computed(() => (isWeekDragging.value ? '0ms' : '220ms'))
+	const weekSwipeStartX = ref<number>(0)
+	const weekSwipeLastX = ref<number>(0)
+	const yearStartIndex = ref<number>(0)
+	const isYearDragging = ref<boolean>(false)
+	const yearTransitionDuration = computed(() => (isYearDragging.value ? '0ms' : '220ms'))
+	const yearSwipeStartX = ref<number>(0)
+	const yearSwipeLastX = ref<number>(0)
+
+	const transactionsData = ref<any[]>([])
+	const hoveredBarIndex = ref<number>(-1)
+	const tooltipTimer = ref<any | null>(null)
+	const isLoading = ref<boolean>(false)
+	const loadError = ref<string>('')
+	const statsView = ref<any>({
+		barData: [] as any[],
+		categoryStats: [] as any[],
+		totalExpense: 0,
+		avgPerDay: 0,
+		ringRate: null as any,
+		budgetAmount: 2000,
+		budgetPercent: 0,
+		annualBudgetAmount: 24000,
+		compareYear: null as any,
+		compareRate: null as any
+	})
+	let transactionsVersion = 0
+	let loadToken = 0
+	const statsCache = new Map<string, any>()
+	
+	function loadTransactions() {
+		seedTransactionsIfEmpty()
+		transactionsData.value = getTransactions() as any[]
+		transactionsVersion += 1
+		statsCache.clear()
+	}
+
+	onShow(() => {
+		loadTransactions()
+		refreshStats(true)
+	})
+
+	const chartTitle = computed(() => {
+		if (period.value === 'week') return '消费趋势 (周)'
+		if (period.value === 'year') return '消费趋势 (年)'
+		return '消费趋势 (本月)'
+	})
+
+	function dateFromISO(iso: string): Date | null {
+		const parts = iso.split('-')
+		if (parts.length !== 3) return null
+		const y = Number(parts[0])
+		const m = Number(parts[1])
+		const d = Number(parts[2])
+		if (isNaN(y) || isNaN(m) || isNaN(d) || y <= 0 || m <= 0 || d <= 0) return null
+		return new Date(y, m - 1, d)
+	}
+
+	const monthPickerValue = computed(() => {
+		const parsed = parseMonthKey(selectedMonthKey.value)
+		if (parsed == null) return `${currentYear}-${pad2(currentMonth)}-01`
+		return `${parsed.year}-${pad2(parsed.month)}-01`
+	})
+
+	function onMonthPickerChange(e: any) {
+		const value = String(e?.detail?.value ?? '')
+		const d = dateFromISO(value)
+		if (d == null) return
+		selectedMonthKey.value = monthKey(d.getFullYear(), d.getMonth() + 1)
+	}
+
+	const weekPickerValue = computed(() => {
+		const d = parseISODateKey(selectedWeekKey.value)
+		if (d == null) return currentWeekKey
+		return selectedWeekKey.value
+	})
+
+	function onWeekPickerChange(e: any) {
+		const value = String(e?.detail?.value ?? '')
+		const d = dateFromISO(value)
+		if (d == null) return
+		selectedWeekKey.value = weekKeyFromDate(d)
+	}
+
+	function selectCurrentWeek() {
+		selectedWeekKey.value = currentWeekKey
+	}
+
+	function selectLastWeek() {
+		selectedWeekKey.value = lastWeekKey
+	}
+
+	function weekDisplayLabel(item: any): string {
+		const key = String(item?.key ?? '')
+		if (key === currentWeekKey) return '本周'
+		if (key === lastWeekKey) return '上周'
+		const range = weekRangeFromKey(key)
+		if (range == null) return key
+		return `${range.start.getMonth() + 1}/${range.start.getDate()}`
+	}
+	
+	const monthItems = computed(() => {
+		let minY = currentYear
+		let minM = currentMonth
+		transactionsData.value.forEach((t: any) => {
+			const d = dateFromISO(t.date != null ? String(t.date) : '')
+			if (d == null) return
+			const y = d.getFullYear()
+			const m = d.getMonth() + 1
+			if (y < minY || (y === minY && m < minM)) {
+				minY = y
+				minM = m
+			}
+		})
+		const list: MonthItem[] = []
+		let y = minY
+		let m = minM
+		while (y < currentYear || (y === currentYear && m <= currentMonth)) {
+			list.push({ year: y, month: m, key: monthKey(y, m) })
+			m += 1
+			if (m > 12) {
+				m = 1
+				y += 1
+			}
+		}
+		return list.map((x) => ({ key: x.key, year: x.year, month: x.month }))
+	})
+
+	const weekItems = computed(() => {
+		let minMs = nowForPeriod.getTime()
+		transactionsData.value.forEach((t: any) => {
+			const d = dateFromISO(t.date != null ? String(t.date) : '')
+			if (d == null) return
+			minMs = Math.min(minMs, d.getTime())
+		})
+		const minDate = new Date(minMs)
+		const start = startOfWeekMonday(minDate)
+		const endStart = startOfWeekMonday(nowForPeriod)
+		const list: WeekItem[] = []
+		let cur = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+		while (cur.getTime() <= endStart.getTime()) {
+			list.push({ key: isoDateKey(cur), start: new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()) })
+			cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7)
+		}
+		return list
+	})
+
+	const minTransactionYear = computed(() => {
+		let minY = currentYear
+		transactionsData.value.forEach((t: any) => {
+			const d = dateFromISO(t.date != null ? String(t.date) : '')
+			if (d == null) return
+			minY = Math.min(minY, d.getFullYear())
+		})
+		return minY
+	})
+
+	const yearItems = computed(() => {
+		const minY = minTransactionYear.value
+		const list: YearItem[] = []
+		for (let y = minY; y <= currentYear; y++) {
+			list.push({ year: y, key: String(y) })
+		}
+		return list
+	})
+	
+	const compareYearOptions = computed(() => {
+		return yearItems.value.map((y: any) => Number(y.year)).filter((y: number) => y !== selectedYear.value)
+	})
+	
+	const compareYearLabels = computed(() => {
+		return compareYearOptions.value.map((y: number) => `${y}年`)
+	})
+	
+	const compareYearDisplay = computed(() => {
+		return compareYear.value == null ? '选择对比年' : `${compareYear.value}年`
+	})
+	
+	function onCompareYearPicker(e: any) {
+		const idx = Number(e?.detail?.value ?? -1)
+		const y = compareYearOptions.value[idx]
+		if (y == null) return
+		compareYear.value = Number(y)
+	}
+	
+	function ensureCompareYearValid() {
+		if (period.value !== 'year') return
+		const options = compareYearOptions.value
+		if (options.length === 0) {
+			compareYear.value = null
+			return
+		}
+		if (compareYear.value != null && options.includes(Number(compareYear.value))) return
+		const prev = selectedYear.value - 1
+		if (options.includes(prev)) {
+			compareYear.value = prev
+			return
+		}
+		compareYear.value = options[options.length - 1]
+	}
+	
+	watch([period, selectedYear, yearItems], () => {
+		ensureCompareYearValid()
+	}, { immediate: true })
+
+	const maxMonthStartIndex = computed(() => {
+		return Math.max(0, monthItems.value.length - visibleMonthCount)
+	})
+
+	const monthTrackWidthPercent = computed(() => {
+		const count = Math.max(1, monthItems.value.length)
+		return (count / visibleMonthCount) * 100
+	})
+
+	const monthCellWidthPercent = computed(() => {
+		const count = Math.max(1, monthItems.value.length)
+		return 100 / count
+	})
+
+	const monthOffsetPercent = computed(() => {
+		const count = Math.max(1, monthItems.value.length)
+		return monthStartIndex.value * (100 / count)
+	})
+
+	const canSlideToCurrent = computed(() => monthStartIndex.value > 0)
+	const canSlideToHistory = computed(() => monthStartIndex.value < maxMonthStartIndex.value)
+	const maxWeekStartIndex = computed(() => Math.max(0, weekItems.value.length - visibleMonthCount))
+	const weekTrackWidthPercent = computed(() => {
+		const count = Math.max(1, weekItems.value.length)
+		return (count / visibleMonthCount) * 100
+	})
+	const weekCellWidthPercent = computed(() => {
+		const count = Math.max(1, weekItems.value.length)
+		return 100 / count
+	})
+	const weekOffsetPercent = computed(() => {
+		const count = Math.max(1, weekItems.value.length)
+		return weekStartIndex.value * (100 / count)
+	})
+	const canSlideToCurrentWeek = computed(() => weekStartIndex.value > 0)
+	const canSlideToHistoryWeek = computed(() => weekStartIndex.value < maxWeekStartIndex.value)
+	const maxYearStartIndex = computed(() => Math.max(0, yearItems.value.length - visibleMonthCount))
+	const yearTrackWidthPercent = computed(() => {
+		const count = Math.max(1, yearItems.value.length)
+		return (count / visibleMonthCount) * 100
+	})
+	const yearCellWidthPercent = computed(() => {
+		const count = Math.max(1, yearItems.value.length)
+		return 100 / count
+	})
+	const yearOffsetPercent = computed(() => {
+		const count = Math.max(1, yearItems.value.length)
+		return yearStartIndex.value * (100 / count)
+	})
+	const canSlideToCurrentYear = computed(() => yearStartIndex.value > 0)
+	const canSlideToHistoryYear = computed(() => yearStartIndex.value < maxYearStartIndex.value)
+
+	function clampMonthStartIndex(next: number): number {
+		if (next < 0) return 0
+		if (next > maxMonthStartIndex.value) return maxMonthStartIndex.value
+		return next
+	}
+
+	function clampWeekStartIndex(next: number): number {
+		if (next < 0) return 0
+		if (next > maxWeekStartIndex.value) return maxWeekStartIndex.value
+		return next
+	}
+
+	function clampYearStartIndex(next: number): number {
+		if (next < 0) return 0
+		if (next > maxYearStartIndex.value) return maxYearStartIndex.value
+		return next
+	}
+
+	function syncSelectedMonthToWindow() {
+		const focused = monthItems.value[monthStartIndex.value]
+		if (focused) {
+			selectedMonthKey.value = String(focused.key)
+		}
+	}
+
+	function slideMonthWindow(step: number) {
+		if (step > 0 && !canSlideToHistory.value) return
+		if (step < 0 && !canSlideToCurrent.value) return
+		const next = clampMonthStartIndex(monthStartIndex.value + step)
+		if (next === monthStartIndex.value) return
+		monthStartIndex.value = next
+		syncSelectedMonthToWindow()
+	}
+
+	function syncSelectedWeekToWindow() {
+		const focused = weekItems.value[weekStartIndex.value]
+		if (focused) {
+			selectedWeekKey.value = String((focused as any).key)
+		}
+	}
+
+	function slideWeekWindow(step: number) {
+		if (step > 0 && !canSlideToHistoryWeek.value) return
+		if (step < 0 && !canSlideToCurrentWeek.value) return
+		const next = clampWeekStartIndex(weekStartIndex.value + step)
+		if (next === weekStartIndex.value) return
+		weekStartIndex.value = next
+		syncSelectedWeekToWindow()
+	}
+
+	function syncSelectedYearToWindow() {
+		const focused = yearItems.value[yearStartIndex.value]
+		if (focused) {
+			selectedYear.value = Number(focused.year)
+		}
+	}
+
+	function slideYearWindow(step: number) {
+		if (step > 0 && !canSlideToHistoryYear.value) return
+		if (step < 0 && !canSlideToCurrentYear.value) return
+		const next = clampYearStartIndex(yearStartIndex.value + step)
+		if (next === yearStartIndex.value) return
+		yearStartIndex.value = next
+		syncSelectedYearToWindow()
+	}
+
+	function resetYearWindowToLatest() {
+		selectedYear.value = currentYear
+		yearStartIndex.value = maxYearStartIndex.value
+	}
+
+	function resetWeekWindowToLatest() {
+		selectedWeekKey.value = currentWeekKey
+		weekStartIndex.value = maxWeekStartIndex.value
+	}
+
+	function monthSwipeStart(x: number) {
+		monthSwipeStartX.value = x
+		monthSwipeLastX.value = x
+		isMonthDragging.value = true
+	}
+
+	function monthSwipeMove(x: number) {
+		if (!isMonthDragging.value) return
+		monthSwipeLastX.value = x
+	}
+
+	function monthSwipeEnd() {
+		if (!isMonthDragging.value) return
+		const deltaX = monthSwipeLastX.value - monthSwipeStartX.value
+		isMonthDragging.value = false
+		if (Math.abs(deltaX) < 24) return
+		if (deltaX > 0) {
+			slideMonthWindow(1)
+			return
+		}
+		if (deltaX < 0) {
+			slideMonthWindow(-1)
+		}
+	}
+
+	function weekSwipeStart(x: number) {
+		weekSwipeStartX.value = x
+		weekSwipeLastX.value = x
+		isWeekDragging.value = true
+	}
+
+	function weekSwipeMove(x: number) {
+		if (!isWeekDragging.value) return
+		weekSwipeLastX.value = x
+	}
+
+	function weekSwipeEnd() {
+		if (!isWeekDragging.value) return
+		const deltaX = weekSwipeLastX.value - weekSwipeStartX.value
+		isWeekDragging.value = false
+		if (Math.abs(deltaX) < 24) return
+		if (deltaX > 0) {
+			slideWeekWindow(1)
+			return
+		}
+		if (deltaX < 0) {
+			slideWeekWindow(-1)
+		}
+	}
+
+	function yearSwipeStart(x: number) {
+		yearSwipeStartX.value = x
+		yearSwipeLastX.value = x
+		isYearDragging.value = true
+	}
+
+	function yearSwipeMove(x: number) {
+		if (!isYearDragging.value) return
+		yearSwipeLastX.value = x
+	}
+
+	function yearSwipeEnd() {
+		if (!isYearDragging.value) return
+		const deltaX = yearSwipeLastX.value - yearSwipeStartX.value
+		isYearDragging.value = false
+		if (Math.abs(deltaX) < 24) return
+		if (deltaX > 0) {
+			slideYearWindow(1)
+			return
+		}
+		if (deltaX < 0) {
+			slideYearWindow(-1)
+		}
+	}
+
+	function getClientX(e: any): number {
+		const touch = e?.touches?.[0] ?? e?.changedTouches?.[0]
+		if (touch && touch.clientX != null) return Number(touch.clientX)
+		if (e && e.clientX != null) return Number(e.clientX)
+		return 0
+	}
+
+	function onMonthTouchStart(e: any) {
+		monthSwipeStart(getClientX(e))
+	}
+
+	function onMonthTouchMove(e: any) {
+		monthSwipeMove(getClientX(e))
+	}
+
+	function onMonthTouchEnd() {
+		monthSwipeEnd()
+	}
+
+	function onMonthMouseDown(e: any) {
+		monthSwipeStart(getClientX(e))
+	}
+
+	function onMonthMouseMove(e: any) {
+		monthSwipeMove(getClientX(e))
+	}
+
+	function onMonthMouseUp() {
+		monthSwipeEnd()
+	}
+
+	function onWeekTouchStart(e: any) {
+		weekSwipeStart(getClientX(e))
+	}
+
+	function onWeekTouchMove(e: any) {
+		weekSwipeMove(getClientX(e))
+	}
+
+	function onWeekTouchEnd() {
+		weekSwipeEnd()
+	}
+
+	function onWeekMouseDown(e: any) {
+		weekSwipeStart(getClientX(e))
+	}
+
+	function onWeekMouseMove(e: any) {
+		weekSwipeMove(getClientX(e))
+	}
+
+	function onWeekMouseUp() {
+		weekSwipeEnd()
+	}
+
+	function onYearTouchStart(e: any) {
+		yearSwipeStart(getClientX(e))
+	}
+
+	function onYearTouchMove(e: any) {
+		yearSwipeMove(getClientX(e))
+	}
+
+	function onYearTouchEnd() {
+		yearSwipeEnd()
+	}
+
+	function onYearMouseDown(e: any) {
+		yearSwipeStart(getClientX(e))
+	}
+
+	function onYearMouseMove(e: any) {
+		yearSwipeMove(getClientX(e))
+	}
+
+	function onYearMouseUp() {
+		yearSwipeEnd()
 	}
 	
 	function formatMD(date: Date): string {
@@ -224,12 +819,12 @@
 	const chartPeriod = computed(() => {
 		const now = new Date()
 		if (period.value === 'week') {
-			const start = startOfWeekMonday(now)
-			const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6)
-			return `${formatMD(start)} - ${formatMD(end)}`
+			const range = weekRangeFromKey(selectedWeekKey.value)
+			if (range == null) return ''
+			return `${formatMD(range.start)} - ${formatMD(range.end)}`
 		}
 		if (period.value === 'year') {
-			const year = now.getFullYear()
+			const year = selectedYear.value
 			return `${year}年1月1日 - 12月31日`
 		}
 		const parsed = parseMonthKey(selectedMonthKey.value) ?? { year: currentYear, month: currentMonth }
@@ -239,78 +834,326 @@
 		return `${parsed.month}月1日 - ${parsed.month}月${end.getDate()}日`
 	})
 
-	const barData = computed(() => {
+	function buildStatsCacheKey(): string {
+		const v = String(transactionsVersion)
+		if (period.value === 'week') return `${v}|week|${selectedWeekKey.value}`
+		if (period.value === 'year') return `${v}|year|${selectedYear.value}|${compareYear.value ?? ''}`
+		return `${v}|month|${selectedMonthKey.value}`
+	}
+
+	function computeStatsSnapshot(): any {
 		const now = new Date()
-		const expenses = transactionsData.value.filter((t: any) => String(t.type || '') === 'expense')
-		const points: { label: string; sum: number }[] = []
-		
+		const dayMs = 24 * 60 * 60 * 1000
+		let start: Date
+		let endExclusive: Date
+		let barLabels: string[] = []
+		let barSums: number[] = []
+		let dayCount = 0
+
 		if (period.value === 'week') {
-			const start = startOfWeekMonday(now)
-			const labels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+			const range = weekRangeFromKey(selectedWeekKey.value) ?? weekRangeFromKey(currentWeekKey)
+			if (range == null) {
+				return {
+					barData: [],
+					categoryStats: [],
+					totalExpense: 0,
+					avgPerDay: 0,
+					ringRate: null,
+					budgetAmount: 2000,
+					budgetPercent: 0,
+					annualBudgetAmount: 24000,
+					compareYear: null,
+					compareRate: null
+				}
+			}
+			start = range.start
+			endExclusive = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7)
+			dayCount = 7
+			barSums = new Array(7).fill(0)
 			for (let i = 0; i < 7; i++) {
-				const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
-				const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1)
-				const sum = expenses.reduce((acc: number, t: any) => {
-					const d = dateFromISO(String(t.date || ''))
-					if (!d) return acc
-					if (d.getTime() >= dayStart.getTime() && d.getTime() < dayEnd.getTime()) return acc + Number(t.amount || 0)
-					return acc
-				}, 0)
-				points.push({ label: labels[i] as string, sum })
+				const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+				barLabels.push(`${d.getMonth() + 1}/${d.getDate()}`)
 			}
 		} else if (period.value === 'year') {
-			const year = now.getFullYear()
-			for (let m = 1; m <= 12; m++) {
-				const start = new Date(year, m - 1, 1)
-				const end = new Date(year, m, 1)
-				const sum = expenses.reduce((acc: number, t: any) => {
-					const d = dateFromISO(String(t.date || ''))
-					if (!d) return acc
-					if (d.getTime() >= start.getTime() && d.getTime() < end.getTime()) return acc + Number(t.amount || 0)
-					return acc
-				}, 0)
-				points.push({ label: `${m}月`, sum })
-			}
+			start = new Date(selectedYear.value, 0, 1)
+			endExclusive = new Date(selectedYear.value + 1, 0, 1)
+			dayCount = Math.floor((endExclusive.getTime() - start.getTime()) / dayMs)
+			barSums = new Array(12).fill(0)
+			for (let i = 0; i < 12; i++) barLabels.push(`${i + 1}月`)
 		} else {
 			const parsed = parseMonthKey(selectedMonthKey.value) ?? { year: currentYear, month: currentMonth }
-			const monthStart = new Date(parsed.year, parsed.month - 1, 1)
-			const monthEnd = new Date(parsed.year, parsed.month, 1)
-			const buckets = [0, 0, 0, 0]
-			expenses.forEach((t: any) => {
-				const d = dateFromISO(String(t.date || ''))
-				if (!d) return
-				if (d.getTime() < monthStart.getTime() || d.getTime() >= monthEnd.getTime()) return
-				const day = d.getDate()
-				const idx = Math.min(3, Math.floor((day - 1) / 7))
-				buckets[idx] += Number(t.amount || 0)
-			})
-			for (let i = 0; i < 4; i++) points.push({ label: `W${i + 1}`, sum: buckets[i] })
+			start = new Date(parsed.year, parsed.month - 1, 1)
+			endExclusive = new Date(parsed.year, parsed.month, 1)
+			dayCount = Math.floor((endExclusive.getTime() - start.getTime()) / dayMs)
+			barSums = new Array(4).fill(0)
+			barLabels = ['第1周', '第2周', '第3周', '第4周']
 		}
-		
-		const max = points.reduce((m: number, p) => Math.max(m, p.sum), 0)
-		
-		let highlightIdx = -1
-		if (period.value === 'week') {
-			const start = startOfWeekMonday(now)
-			const diffDays = Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
-			highlightIdx = Math.min(6, Math.max(0, diffDays))
-		} else if (period.value === 'year') {
-			highlightIdx = now.getMonth()
-		} else {
-			if (selectedMonthKey.value === currentMonthKey) {
-				highlightIdx = Math.min(3, Math.floor((now.getDate() - 1) / 7))
+
+		const startMs = start.getTime()
+		const endMs = endExclusive.getTime()
+		const prevStartMs = startMs - 7 * dayMs
+		const prevEndMs = startMs
+		let total = 0
+		let prevTotal = 0
+		const categoryTotals: Record<string, number> = {}
+		const compareStartMs = period.value === 'year' && compareYear.value != null ? new Date(Number(compareYear.value), 0, 1).getTime() : 0
+		const compareEndMs = period.value === 'year' && compareYear.value != null ? new Date(Number(compareYear.value) + 1, 0, 1).getTime() : 0
+		let compareTotal = 0
+
+		transactionsData.value.forEach((t: any) => {
+			const typeText = t.type != null ? String(t.type) : ''
+			if (typeText !== 'expense') return
+			const d = dateFromISO(t.date != null ? String(t.date) : '')
+			if (d == null) return
+			const ms = d.getTime()
+			const amount = Number(t.amount != null ? t.amount : 0)
+
+			if (ms >= startMs && ms < endMs) {
+				total += amount
+				const cat = t.category != null ? String(t.category) : '未分类'
+				if (categoryTotals[cat] == null) categoryTotals[cat] = 0
+				categoryTotals[cat] += amount
+
+				if (period.value === 'week') {
+					const idx = Math.floor((ms - startMs) / dayMs)
+					if (idx >= 0 && idx < 7) barSums[idx] += amount
+				} else if (period.value === 'year') {
+					barSums[d.getMonth()] += amount
+				} else {
+					const idx = Math.min(3, Math.floor((d.getDate() - 1) / 7))
+					barSums[idx] += amount
+				}
 			}
-		}
-		
-		return points.map((p, idx) => {
-			const height = max <= 0 ? 0 : Math.round((p.sum / max) * 100)
-			const color = idx === highlightIdx ? '#1152d4' : '#bfdbfe'
-			return { height, color, label: p.label, amount: p.sum }
+
+			if (period.value === 'week' && ms >= prevStartMs && ms < prevEndMs) {
+				prevTotal += amount
+			}
+
+			if (period.value === 'year' && compareYear.value != null && ms >= compareStartMs && ms < compareEndMs) {
+				compareTotal += amount
+			}
 		})
+
+		const max = barSums.reduce((m: number, v: number) => Math.max(m, v), 0)
+		let highlightIdx = -1
+		if (period.value === 'week' && selectedWeekKey.value === currentWeekKey) {
+			const todayMs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+			highlightIdx = Math.min(6, Math.max(0, Math.floor((todayMs - startMs) / dayMs)))
+		}
+		if (period.value === 'year' && selectedYear.value === now.getFullYear()) {
+			highlightIdx = now.getMonth()
+		}
+		if (period.value === 'month' && selectedMonthKey.value === currentMonthKey) {
+			highlightIdx = Math.min(3, Math.floor((now.getDate() - 1) / 7))
+		}
+
+		const barData = barSums.map((sum: number, idx: number) => {
+			const height = max <= 0 ? 0 : Math.round((sum / max) * 100)
+			const color = idx === highlightIdx ? '#1152d4' : '#bfdbfe'
+			const label = barLabels[idx] != null ? String(barLabels[idx]) : ''
+			return { height, color, label, amount: sum }
+		})
+
+		const topN = period.value === 'year' ? 8 : 5
+		const categoryStats = Object.entries(categoryTotals)
+			.sort((a, b) => Number(b[1]) - Number(a[1]))
+			.slice(0, topN)
+			.map(([name, amount]) => {
+				const catInfo = categoryMeta(name)
+				return {
+					name,
+					amount,
+					percent: total > 0 ? Math.round((Number(amount) / total) * 100) : 0,
+					...catInfo
+				}
+			})
+
+		const avgPerDay = dayCount > 0 ? Number((total / dayCount).toFixed(2)) : 0
+		const ringRate = period.value === 'week' && prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 100) : null
+		const budgetAmount = 2000
+		const annualBudgetAmount = 2000 * 12
+		const budgetPercent = period.value === 'year' ? Math.round((total / annualBudgetAmount) * 100) : Math.round((total / budgetAmount) * 100)
+		const compareRate = period.value === 'year' && compareYear.value != null && compareTotal > 0 ? Math.round(((total - compareTotal) / compareTotal) * 100) : null
+
+		return {
+			barData,
+			categoryStats,
+			totalExpense: total,
+			avgPerDay,
+			ringRate,
+			budgetAmount,
+			budgetPercent,
+			annualBudgetAmount,
+			compareYear: compareYear.value,
+			compareRate
+		}
+	}
+
+	async function refreshStats(force: boolean = false) {
+		const token = ++loadToken
+		loadError.value = ''
+		isLoading.value = true
+		const key = buildStatsCacheKey()
+
+		try {
+			if (!force && statsCache.has(key)) {
+				statsView.value = statsCache.get(key)
+				isLoading.value = false
+				return
+			}
+			await Promise.resolve()
+			if (token !== loadToken) return
+			const t0 = Date.now()
+			const snapshot = computeStatsSnapshot()
+			const t1 = Date.now()
+			;(snapshot as any).computeMs = Math.max(0, Number(t1) - Number(t0))
+			statsCache.set(key, snapshot)
+			statsView.value = snapshot
+			isLoading.value = false
+		} catch (err) {
+			if (token !== loadToken) return
+			const m = (err as any)?.message
+			if (m != null) {
+				loadError.value = String(m)
+			} else if (err != null) {
+				loadError.value = String(err)
+			} else {
+				loadError.value = '统计加载失败'
+			}
+			isLoading.value = false
+		}
+	}
+
+	watch([period, selectedMonthKey, selectedWeekKey, selectedYear, compareYear], () => {
+		refreshStats(false)
 	})
+
+	watch(() => (statsView.value?.barData?.length ?? 0), () => {
+		hoveredBarIndex.value = -1
+	})
+
+	function csvEscape(value: any): string {
+		const s = String(value ?? '')
+		if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+		return s
+	}
+	
+	function tryDownloadTextFile(filename: string, mime: string, content: string): boolean {
+		const g: any = globalThis as any
+		const BlobCtor = g.Blob
+		const URLCtor = g.URL
+		const doc = g.document
+		if (BlobCtor == null || URLCtor == null || doc == null) return false
+		const blob = new BlobCtor([content], { type: mime })
+		const url = URLCtor.createObjectURL(blob)
+		const a = doc.createElement('a')
+		a.href = url
+		a.download = filename
+		doc.body.appendChild(a)
+		a.click()
+		doc.body.removeChild(a)
+		URLCtor.revokeObjectURL(url)
+		return true
+	}
+	
+	function yearExpenseRows(): any[] {
+		const start = new Date(selectedYear.value, 0, 1).getTime()
+		const end = new Date(selectedYear.value + 1, 0, 1).getTime()
+		const rows: any[] = []
+		transactionsData.value.forEach((t: any) => {
+			const typeText = t.type != null ? String(t.type) : ''
+			if (typeText !== 'expense') return
+			const d = dateFromISO(t.date != null ? String(t.date) : '')
+			if (d == null) return
+			const ms = d.getTime()
+			if (ms < start || ms >= end) return
+			rows.push({
+				date: t.date != null ? String(t.date) : '',
+				category: t.category != null ? String(t.category) : '未分类',
+				amount: Number(t.amount != null ? t.amount : 0),
+				note: t.note != null ? String(t.note) : ''
+			})
+		})
+		rows.sort((a, b) => String(a.date).localeCompare(String(b.date)))
+		return rows
+	}
+	
+	function exportYearExcel() {
+		try {
+			const rows = yearExpenseRows()
+			const header = ['日期', '分类', '金额', '备注']
+			const lines: string[] = []
+			lines.push(header.map(csvEscape).join(','))
+			rows.forEach((r: any) => {
+				lines.push([r.date, r.category, r.amount, r.note].map(csvEscape).join(','))
+			})
+			lines.push(['', '合计', statsView.value.totalExpense, ''].map(csvEscape).join(','))
+			const csv = `\ufeff${lines.join('\n')}`
+			const filename = `DayLedger-${selectedYear.value}-支出统计.csv`
+			const ok = tryDownloadTextFile(filename, 'text/csv;charset=utf-8', csv)
+			if (ok) {
+				uni.showToast({ title: '已导出CSV', icon: 'success', duration: 1200 })
+				return
+			}
+			uni.setClipboardData({
+				data: csv,
+				success: () => uni.showToast({ title: '已复制CSV到剪贴板', icon: 'success', duration: 1500 }),
+				fail: () => uni.showToast({ title: '导出失败', icon: 'none', duration: 1500 })
+			})
+		} catch (err) {
+			uni.showToast({ title: '导出失败', icon: 'none', duration: 1500 })
+		}
+	}
+	
+	function exportYearPdf() {
+		try {
+			const rows = yearExpenseRows()
+			const title = `${selectedYear.value} 年支出统计`
+			const catLines = (statsView.value?.categoryStats ?? []).slice(0, 8).map((c: any) => `<li>${c.name}：￥${formatMoney(Number(c.amount), 2)}（${c.percent}%）</li>`).join('')
+			const tableRows = rows.map((r: any) => `<tr><td>${r.date}</td><td>${r.category}</td><td style="text-align:right;">￥${formatMoney(Number(r.amount), 2)}</td><td>${r.note != null ? String(r.note) : ''}</td></tr>`).join('')
+			const totalExpenseNum = statsView.value.totalExpense != null ? Number(statsView.value.totalExpense) : 0
+			const budgetPercentNum = statsView.value.budgetPercent != null ? Number(statsView.value.budgetPercent) : 0
+			const html = `<!doctype html><html><head><meta charset="utf-8"/><title>${title}</title><style>
+body{font-family:Arial,Helvetica,sans-serif;padding:16px;}
+h1{font-size:18px;margin:0 0 8px;}
+.meta{color:#64748b;font-size:12px;margin-bottom:12px;}
+table{width:100%;border-collapse:collapse;margin-top:12px;}
+th,td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12px;}
+th{background:#f8fafc;text-align:left;}
+</style></head><body>
+<h1>${title}</h1>
+<div class="meta">全年支出：￥${formatMoney(totalExpenseNum, 2)}；预算完成度：${budgetPercentNum}%；年度对比：${statsView.value.compareRate == null ? '--' : (statsView.value.compareRate + '%')}</div>
+<div><strong>主要支出</strong><ul>${catLines}</ul></div>
+<table><thead><tr><th>日期</th><th>分类</th><th>金额</th><th>备注</th></tr></thead><tbody>${tableRows}</tbody></table>
+</body></html>`
+			const g: any = globalThis as any
+			const w = g.window
+			if (w != null && typeof w.open === 'function') {
+				const win = w.open('', '_blank')
+				if (win != null && win.document != null) {
+					win.document.open()
+					win.document.write(html)
+					win.document.close()
+					setTimeout(() => {
+						try { win.print() } catch (e) {}
+					}, 200)
+					uni.showToast({ title: '已打开打印页', icon: 'success', duration: 1200 })
+					return
+				}
+			}
+			const plain = `${title}\n全年支出：￥${formatMoney(totalExpenseNum, 2)}\n`
+			uni.setClipboardData({
+				data: plain,
+				success: () => uni.showToast({ title: '已复制PDF内容到剪贴板', icon: 'success', duration: 1500 }),
+				fail: () => uni.showToast({ title: '导出失败', icon: 'none', duration: 1500 })
+			})
+		} catch (err) {
+			uni.showToast({ title: '导出失败', icon: 'none', duration: 1500 })
+		}
+	}
 	
 	function onBarEnter(index: number) {
-		if (tooltipTimer.value) {
+		if (tooltipTimer.value != null) {
 			clearTimeout(tooltipTimer.value as any)
 			tooltipTimer.value = null
 		}
@@ -318,7 +1161,7 @@
 	}
 	
 	function onBarLeave() {
-		if (tooltipTimer.value) {
+		if (tooltipTimer.value != null) {
 			clearTimeout(tooltipTimer.value as any)
 			tooltipTimer.value = null
 		}
@@ -327,7 +1170,7 @@
 	
 	function onBarTap(index: number) {
 		hoveredBarIndex.value = index
-		if (tooltipTimer.value) clearTimeout(tooltipTimer.value as any)
+		if (tooltipTimer.value != null) clearTimeout(tooltipTimer.value as any)
 		tooltipTimer.value = setTimeout(() => {
 			hoveredBarIndex.value = -1
 			tooltipTimer.value = null
@@ -336,37 +1179,103 @@
 	
 	watch(period, (p: string) => {
 		if (p === 'month') {
-			selectedMonthKey.value = currentMonthKey
-			nextTick(() => scrollMonthToCurrent())
+			ensureMonthSelectionVisible()
+			return
 		}
+		if (p === 'week') {
+			ensureWeekSelectionVisible()
+			return
+		}
+		if (p === 'year') {
+			ensureYearSelectionVisible()
+		}
+	})
+
+	function ensureMonthSelectionVisible() {
+		const idx = monthItems.value.findIndex((m: any) => String(m.key) === selectedMonthKey.value)
+		if (idx < 0) return
+		const start = monthStartIndex.value
+		const end = start + visibleMonthCount - 1
+		let next = start
+		if (idx < start) next = idx
+		if (idx > end) next = idx - visibleMonthCount + 1
+		monthStartIndex.value = clampMonthStartIndex(next)
+	}
+
+	function ensureWeekSelectionVisible() {
+		const idx = weekItems.value.findIndex((w: any) => String(w.key) === selectedWeekKey.value)
+		if (idx < 0) return
+		const start = weekStartIndex.value
+		const end = start + visibleMonthCount - 1
+		let next = start
+		if (idx < start) next = idx
+		if (idx > end) next = idx - visibleMonthCount + 1
+		weekStartIndex.value = clampWeekStartIndex(next)
+	}
+
+	function ensureYearSelectionVisible() {
+		const idx = yearItems.value.findIndex((y: any) => Number(y.year) === selectedYear.value)
+		if (idx < 0) return
+		const start = yearStartIndex.value
+		const end = start + visibleMonthCount - 1
+		let next = start
+		if (idx < start) next = idx
+		if (idx > end) next = idx - visibleMonthCount + 1
+		yearStartIndex.value = clampYearStartIndex(next)
+	}
+
+	watch(selectedMonthKey, () => {
+		if (period.value !== 'month') return
+		ensureMonthSelectionVisible()
+	})
+
+	watch(selectedWeekKey, () => {
+		if (period.value !== 'week') return
+		ensureWeekSelectionVisible()
+	})
+
+	watch(selectedYear, () => {
+		if (period.value !== 'year') return
+		ensureYearSelectionVisible()
 	})
 	
 	watch(monthItems, (list: any[]) => {
-		if (period.value !== 'month') return
+		monthStartIndex.value = clampMonthStartIndex(monthStartIndex.value)
 		if (!list.some((m: any) => String(m.key) === selectedMonthKey.value)) {
-			selectedMonthKey.value = (list.length > 0 ? String(list[list.length - 1].key) : currentMonthKey)
+			selectedMonthKey.value = (list.length > 0 ? String(list[0].key) : currentMonthKey)
 		}
-		nextTick(() => scrollMonthToCurrent())
+		if (period.value === 'month') ensureMonthSelectionVisible()
 	}, { immediate: true })
 
-	const budgetAmount = 2000
-	
+	watch(weekItems, (list: any[]) => {
+		weekStartIndex.value = clampWeekStartIndex(weekStartIndex.value)
+		if (!list.some((w: any) => String(w.key) === selectedWeekKey.value)) {
+			selectedWeekKey.value = (list.length > 0 ? String(list[0].key) : currentWeekKey)
+		}
+		if (period.value === 'week' && selectedWeekKey.value === currentWeekKey) {
+			weekStartIndex.value = maxWeekStartIndex.value
+		}
+		if (period.value === 'week') ensureWeekSelectionVisible()
+	}, { immediate: true })
+
+	watch(yearItems, (list: any[]) => {
+		yearStartIndex.value = clampYearStartIndex(yearStartIndex.value)
+		if (!list.some((y: any) => Number(y.year) === selectedYear.value)) {
+			resetYearWindowToLatest()
+			return
+		}
+		if (period.value === 'year' && selectedYear.value === currentYear) {
+			yearStartIndex.value = maxYearStartIndex.value
+		}
+		if (period.value === 'year') ensureYearSelectionVisible()
+	}, { immediate: true })
+
 	function formatMoney(value: number, digits: number): string {
 		const fixed = Number(value).toFixed(digits)
 		const parts = fixed.split('.')
 		const withCommas = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 		return parts.length > 1 ? `${withCommas}.${parts[1]}` : withCommas
 	}
-
-	const totalExpense = computed(() => {
-		return transactionsData.value
-			.filter((t: any) => t.type === 'expense')
-			.reduce((sum: number, t: any) => sum + Number(t.amount), 0)
-	})
-
-	const budgetPercent = computed(() => {
-		return Math.round((totalExpense.value / budgetAmount) * 100)
-	})
 
 	function categoryMeta(name: string): any {
 		if (name === '购物') return { iconKind: 'cart', bg: '#ffedd5', color: '#ea580c' }
@@ -375,33 +1284,6 @@
 		return { iconKind: 'info', bg: '#f1f5f9', color: '#64748b' }
 	}
 
-	const categoryStats = computed(() => {
-		const categoryTotals: Record<string, number> = {}
-		
-		transactionsData.value
-			.filter((t: any) => t.type === 'expense')
-			.forEach((t: any) => {
-				if (!categoryTotals[t.category]) {
-					categoryTotals[t.category] = 0
-				}
-				categoryTotals[t.category] += Number(t.amount)
-			})
-
-		const total = Object.values(categoryTotals).reduce((sum: number, v) => sum + v, 0)
-		
-		return Object.entries(categoryTotals)
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 3)
-			.map(([name, amount]) => {
-				const catInfo = categoryMeta(name)
-				return {
-					name,
-					amount,
-					percent: total > 0 ? Math.round((amount / total) * 100) : 0,
-					...catInfo
-				}
-			})
-	})
 
 	function goToHome() {
 		uni.reLaunch({ url: '/pages/index/index' })
@@ -426,7 +1308,7 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100%;
 		background-color: #f9fafb;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
@@ -434,8 +1316,6 @@
 	.header {
 		background-color: #ffffff;
 		padding: 40px 16px 12px;
-		position: sticky;
-		top: 0;
 		z-index: 10;
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 	}
@@ -487,7 +1367,7 @@
 		justify-content: center;
 	}
 	
-	.period-btn text {
+	.period-btn-text {
 		font-size: 14px;
 		font-weight: 500;
 	}
@@ -498,38 +1378,80 @@
 		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 	}
 	
-	.period-btn.active text {
+	.period-btn-text.active {
 		font-weight: 600;
 	}
 
-	.month-scroll {
-		width: 100%;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
+	.month-switcher {
+		flex-direction: row;
+		align-items: center;
 	}
 	
-	.month-scroll::-webkit-scrollbar {
-		display: none;
+	.quick-actions {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.quick-action-btn {
+		font-size: 12px;
+		padding: 6px 10px;
+		border-radius: 999px;
+		background-color: #f3f4f6;
+		color: #475569;
+	}
+	
+	.quick-action-btn.active {
+		background-color: #1152d4;
+		color: #ffffff;
 	}
 
-	.month-list {
-		display: inline-flex;
+	.month-arrow {
+		width: 28px;
+		height: 28px;
+		border-radius: 14px;
+		background-color: #f3f4f6;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.month-arrow.disabled {
+		opacity: 0.45;
+	}
+
+	.month-arrow-text {
+		font-size: 18px;
+		color: #334155;
+		font-weight: 600;
+		line-height: 18px;
+	}
+
+	.month-viewport {
+		flex: 1;
+		overflow: hidden;
+	}
+
+	.month-track {
 		flex-direction: row;
-		flex-wrap: nowrap;
-		padding-left: 24rpx;
-		padding-right: 24rpx;
+		align-items: center;
+		transition-property: transform;
+		transition-timing-function: ease;
+	}
+
+	.month-cell {
+		width: 16.666667%;
+		flex-shrink: 0;
+		padding-left: 4px;
+		padding-right: 4px;
 	}
 
 	.month-btn {
-		flex-shrink: 0;
-		min-width: 124rpx;
-		padding: 12rpx 0;
+		width: 100%;
+		padding: 8px 0;
 		border-radius: 16px;
 		font-size: 14px;
 		font-weight: 500;
 		color: #64748b;
 		background-color: #f9fafb;
-		margin-right: 16rpx;
 		text-align: center;
 	}
 
@@ -540,7 +1462,7 @@
 	}
 	
 	.month-btn.current {
-		box-shadow: 0 0 0 1px rgba(17, 82, 212, 0.35) inset;
+		/* box-shadow: 0 0 0 1px rgba(17, 82, 212, 0.35) inset; */
 	}
 
 	.month-btn.disabled {
@@ -551,8 +1473,6 @@
 		flex: 1;
 		padding: 16px;
 		padding-bottom: 100px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
 	}
 	
 	.content::-webkit-scrollbar {
@@ -572,6 +1492,55 @@
 		justify-content: space-between;
 		align-items: center;
 		margin-bottom: 24px;
+	}
+	
+	.section-header-left {
+		flex-direction: column;
+	}
+	
+	.section-header-right {
+		flex-direction: row;
+		align-items: center;
+	}
+	
+	.loading-pill {
+		font-size: 12px;
+		color: #475569;
+		background-color: #f1f5f9;
+		padding: 4px 8px;
+		border-radius: 999px;
+	}
+	
+	.section-action {
+		font-size: 12px;
+		color: #1152d4;
+		font-weight: 600;
+		margin-left: 10px;
+	}
+	
+	.error-state {
+		background-color: #fff1f2;
+		border-radius: 8px;
+		padding: 12px 14px;
+		margin-bottom: 16px;
+		flex-direction: row;
+		justify-content: space-between;
+		align-items: center;
+		border-width: 1px;
+		border-color: #fecdd3;
+	}
+	
+	.error-text {
+		font-size: 12px;
+		color: #9f1239;
+		flex: 1;
+		margin-right: 10px;
+	}
+	
+	.error-retry {
+		font-size: 12px;
+		color: #1152d4;
+		font-weight: 600;
 	}
 
 	.section-title {
@@ -613,31 +1582,40 @@
 
 	.bar-chart {
 		flex-direction: row;
-		align-items: flex-end;
+		align-items: stretch;
 		justify-content: space-between;
 		height: 100%;
-		padding: 0 8px;
-		overflow: visible;
+		padding-left: 8px;
+		padding-right: 8px;
 	}
 
 	.bar-item {
 		flex: 1;
 		flex-direction: column;
 		align-items: center;
-		justify-content: flex-end;
 		height: 100%;
+	}
+
+	.bar-wrap {
+		flex: 1;
+		width: 100%;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-end;
 	}
 
 	.bar {
 		width: 100%;
-		max-width: 40px;
-		border-radius: 4px 4px 0 0;
+		max-width: 18px;
+		border-radius: 14px 14px 0 0;
 	}
 
 	.bar-label {
 		font-size: 10px;
 		color: #94a3b8;
-		margin-top: 8px;
+		height: 20px;
+		line-height: 20px;
+		margin-top: 6px;
 	}
 
 	.budget-header {
@@ -681,6 +1659,77 @@
 		color: #94a3b8;
 		text-align: right;
 		margin-top: 8px;
+	}
+	
+	.summary-grid {
+		flex-direction: row;
+		justify-content: space-between;
+	}
+	
+	.summary-item {
+		width: 32%;
+		background-color: #f9fafb;
+		border-radius: 10px;
+		padding: 12px;
+	}
+	
+	.summary-label {
+		font-size: 12px;
+		color: #64748b;
+	}
+	
+	.summary-value {
+		font-size: 16px;
+		font-weight: 700;
+		color: #0f172a;
+		margin-top: 6px;
+	}
+	
+	.year-compare-row {
+		flex-direction: row;
+		align-items: center;
+		margin-top: 14px;
+	}
+	
+	.year-compare-label {
+		font-size: 12px;
+		color: #64748b;
+	}
+	
+	.year-compare-value {
+		font-size: 12px;
+		color: #1152d4;
+		background-color: #eef2ff;
+		padding: 6px 10px;
+		border-radius: 999px;
+		margin-left: 10px;
+	}
+	
+	.year-compare-clear {
+		font-size: 12px;
+		color: #64748b;
+		padding: 6px 10px;
+		border-radius: 999px;
+		background-color: #f1f5f9;
+		margin-left: 10px;
+	}
+	
+	.export-row {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 12px;
+	}
+	
+	.export-btn {
+		width: 48%;
+		text-align: center;
+		padding: 10px 12px;
+		border-radius: 10px;
+		background-color: #1152d4;
+		color: #ffffff;
+		font-size: 13px;
+		font-weight: 600;
 	}
 
 	.category-section {
@@ -749,6 +1798,20 @@
 		color: #6b7280;
 		margin-top: 2px;
 	}
+	
+	.category-progress {
+		height: 6px;
+		background-color: #f1f5f9;
+		border-radius: 999px;
+		overflow: hidden;
+		margin-top: 8px;
+		width: 140px;
+	}
+	
+	.category-progress-fill {
+		height: 100%;
+		border-radius: 999px;
+	}
 
 	.category-amount {
 		font-size: 14px;
@@ -761,7 +1824,7 @@
 		padding: 24px;
 	}
 
-	.empty-state text {
+	.empty-state-text {
 		color: #94a3b8;
 		font-size: 14px;
 	}
@@ -782,7 +1845,7 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: calc(12px + env(safe-area-inset-bottom));
+		padding-bottom: 12px;
 		z-index: 40;
 		overflow: visible;
 	}

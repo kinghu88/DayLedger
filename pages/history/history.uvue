@@ -14,54 +14,113 @@
 					<svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 					</svg>
-					<input class="search-input" type="text" v-model="searchKeyword" placeholder="搜索交易..." />
+					<input class="search-input" type="text" v-model="searchKeywordInput" placeholder="搜索交易..." />
 				</view>
-				<view class="filter-btn">
+				<view class="filter-btn" @click="toggleFilters">
 					<svg class="filter-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 					</svg>
 				</view>
 			</view>
+			<view class="count-row">
+				<text class="count-text">共{{ totalCount }}条 · 当前{{ shownCount }}条</text>
+			</view>
+			<view v-if="filtersOpen" class="filter-panel">
+				<view class="filter-row">
+					<text class="filter-label">状态</text>
+					<picker :range="typeOptions" :value="typeIndex" @change="onTypeChange">
+						<view class="filter-value">
+							<text class="filter-value-text">{{ typeOptions[typeIndex] }}</text>
+						</view>
+					</picker>
+				</view>
+				<view class="filter-row">
+					<text class="filter-label">开始</text>
+					<picker mode="date" :value="startDatePickerValue" @change="onStartDateChange">
+						<view class="filter-value">
+							<text class="filter-value-text">{{ startDate.length > 0 ? startDate : '不限' }}</text>
+						</view>
+					</picker>
+				</view>
+				<view class="filter-row">
+					<text class="filter-label">结束</text>
+					<picker mode="date" :value="endDatePickerValue" @change="onEndDateChange">
+						<view class="filter-value">
+							<text class="filter-value-text">{{ endDate.length > 0 ? endDate : '不限' }}</text>
+						</view>
+					</picker>
+				</view>
+				<view class="filter-actions">
+					<view class="filter-action-btn" @click="resetFilters">
+						<text class="filter-action-text">重置</text>
+					</view>
+					<view class="filter-action-btn primary" @click="closeFilters">
+						<text class="filter-action-text primary-text">完成</text>
+					</view>
+				</view>
+			</view>
 		</header>
 
 		<scroll-view class="content" scroll-y="true" :show-scrollbar="false">
-			<view v-if="groupedTransactions.length === 0" class="empty-state">
-				<text>暂无交易记录</text>
+			<view v-if="totalCount === 0" class="empty-state">
+				<text class="empty-state-text">暂无交易记录</text>
+			</view>
+			<view v-else-if="shownCount === 0" class="empty-state">
+				<text class="empty-state-text">没有匹配的交易</text>
 			</view>
 			
-			<view v-for="group in groupedTransactions" :key="group.date" class="date-group">
-				<text class="date-label">{{ group.label }}</text>
-				<view class="transactions-list">
-					<view v-for="item in group.items" :key="item.id" class="transaction-item" @click="goToTransactionDetail(item.id)">
-						<view class="transaction-left">
-							<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
-								<svg v-if="item.iconKind === 'book'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
-								<svg v-else-if="item.iconKind === 'cash'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
-								<svg v-else-if="item.iconKind === 'swap'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
-								<svg v-else-if="item.iconKind === 'bag'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
-								<svg v-else-if="item.iconKind === 'bolt'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
-								<svg v-else class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-								</svg>
+			<view v-else>
+				<view v-for="group in groupedTransactions" :key="group.date" class="date-group">
+					<text class="date-label">{{ group.label }}</text>
+					<view class="transactions-list">
+						<view
+							v-for="item in group.items"
+							:key="item.id"
+							class="swipe-row"
+							@touchstart="onSwipeStart(item.id, $event)"
+							@touchmove="onSwipeMove($event)"
+							@touchend="onSwipeEnd"
+							@touchcancel="onSwipeEnd"
+							@mousedown="onSwipeStart(item.id, $event)"
+							@mousemove="onSwipeMove($event)"
+							@mouseup="onSwipeEnd"
+							@mouseleave="onSwipeEnd"
+						>
+							<view class="swipe-delete" :class="{ visible: isDeleteVisible(item.id) }" @click.stop="onDeleteExpense(item.id)">
+								<text class="swipe-delete-text">删除</text>
 							</view>
-							<view class="transaction-info">
-								<text class="transaction-title">{{ item.description }}</text>
-								<text class="transaction-sub">{{ item.category }} • {{ item.note || '' }}</text>
+							<view class="transaction-item" :style="{ transform: `translateX(${getSwipeTranslateX(item.id)}px)` }" @click="onTransactionTap(item.id)">
+								<view class="transaction-left">
+									<view class="transaction-icon" :style="{ backgroundColor: item.iconBg, color: item.iconColor }">
+									<svg v-if="item.iconKind === 'book'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									<svg v-else-if="item.iconKind === 'cash'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									<svg v-else-if="item.iconKind === 'swap'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									<svg v-else-if="item.iconKind === 'bag'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									<svg v-else-if="item.iconKind === 'bolt'" class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									<svg v-else class="tx-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+									</svg>
+									</view>
+									<view class="transaction-info">
+										<text class="transaction-title">{{ item.description }}</text>
+										<text class="transaction-sub">{{ item.category }} • {{ item.noteText }}</text>
+									</view>
+								</view>
+								<text class="transaction-amount" :class="{ income: item.type === 'income', expense: item.type !== 'income' }">
+									{{ item.type === 'income' ? '+' : '-' }}￥{{ formatMoney(Number(item.amount), 2) }}
+								</text>
 							</view>
 						</view>
-						<text class="transaction-amount" :class="{ income: item.type === 'income', expense: item.type !== 'income' }">
-							{{ item.type === 'income' ? '+' : '-' }}￥{{ formatMoney(Number(item.amount), 2) }}
-						</text>
 					</view>
 				</view>
 			</view>
@@ -109,20 +168,49 @@
 </template>
 
 <script setup lang="uts">
-	import { ref, computed } from 'vue'
-	import { seedTransactionsIfEmpty, getTransactions } from '../../services/transactions'
+	import { ref, computed, watch, onBeforeUnmount } from 'vue'
+	import { seedTransactionsIfEmpty, getTransactions, removeExpense } from '../../services/transactions'
 
-	const searchKeyword = ref<string>('')
+	const searchKeywordInput = ref<string>('')
+	const debouncedKeyword = ref<string>('')
+	let keywordDebounceTimer = 0
 
-	const transactionsData = ref<any[]>([])
+	const dataList = ref<any[]>([])
+	const DELETE_WIDTH = 80
+	const DELETE_THRESHOLD = 60
+	const swipeOpenId = ref<string>('')
+	const swipeTrackingId = ref<string>('')
+	const swipeStartX = ref<number>(0)
+	const swipeBaseOffset = ref<number>(0)
+	const swipeOffset = ref<number>(0)
 
 	function loadTransactions() {
 		seedTransactionsIfEmpty()
-		transactionsData.value = getTransactions() as any[]
+		dataList.value = getTransactions() as any[]
+		swipeOpenId.value = ''
+		swipeTrackingId.value = ''
+		swipeOffset.value = 0
 	}
 
 	onShow(() => {
 		loadTransactions()
+	})
+
+	watch(searchKeywordInput, () => {
+		if (keywordDebounceTimer != 0) {
+			clearTimeout(keywordDebounceTimer)
+			keywordDebounceTimer = 0
+		}
+		keywordDebounceTimer = setTimeout(() => {
+			debouncedKeyword.value = searchKeywordInput.value.trim()
+		}, 200) as unknown as number
+	})
+
+	onBeforeUnmount(() => {
+		if (keywordDebounceTimer != 0) {
+			clearTimeout(keywordDebounceTimer)
+			keywordDebounceTimer = 0
+		}
 	})
 
 	function formatMoney(value: number, digits: number): string {
@@ -141,54 +229,230 @@
 		return { iconKind: 'info', iconBg: '#f1f5f9', iconColor: '#64748b' }
 	}
 
-	const filteredTransactions = computed(() => {
-		if (!searchKeyword.value) return transactionsData.value
-		const keyword = searchKeyword.value.toLowerCase()
-		return transactionsData.value.filter((t: any) => 
-			t.description.toLowerCase().includes(keyword) ||
-			t.category.toLowerCase().includes(keyword) ||
-			(t.note && t.note.toLowerCase().includes(keyword))
-		)
+	const filtersOpen = ref<boolean>(false)
+	const typeOptions = ['全部', '收入', '支出']
+	const typeIndex = ref<number>(0)
+	const startDate = ref<string>('')
+	const endDate = ref<string>('')
+
+	function toggleFilters() {
+		filtersOpen.value = !filtersOpen.value
+	}
+
+	function closeFilters() {
+		filtersOpen.value = false
+	}
+
+	function resetFilters() {
+		searchKeywordInput.value = ''
+		debouncedKeyword.value = ''
+		typeIndex.value = 0
+		startDate.value = ''
+		endDate.value = ''
+	}
+
+	function onTypeChange(e: any) {
+		const v = Number(e?.detail?.value ?? 0)
+		typeIndex.value = isNaN(v) ? 0 : v
+	}
+
+	function onStartDateChange(e: any) {
+		const v = String(e?.detail?.value ?? '')
+		startDate.value = v
+	}
+
+	function onEndDateChange(e: any) {
+		const v = String(e?.detail?.value ?? '')
+		endDate.value = v
+	}
+
+	function pad2(n: number): string {
+		return String(n).padStart(2, '0')
+	}
+
+	function isoFromDate(d: Date): string {
+		const y = d.getFullYear()
+		const m = d.getMonth() + 1
+		const day = d.getDate()
+		return `${y}-${pad2(m)}-${pad2(day)}`
+	}
+
+	function parseISOToDate(iso: string): Date | null {
+		const parts = iso.split('-')
+		if (parts.length !== 3) return null
+		const y = Number(parts[0])
+		const m = Number(parts[1])
+		const d = Number(parts[2])
+		if (isNaN(y) || isNaN(m) || isNaN(d) || y <= 0 || m <= 0 || d <= 0) return null
+		return new Date(y, m - 1, d)
+	}
+
+	function formatGroupLabel(dateStr: string): string {
+		const today = new Date()
+		const todayISO = isoFromDate(today)
+		const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+		const yesterdayISO = isoFromDate(yesterday)
+		if (dateStr === todayISO) return '今天'
+		if (dateStr === yesterdayISO) return '昨天'
+
+		const d = parseISOToDate(dateStr)
+		if (d == null) return dateStr
+		const y = d.getFullYear()
+		const m = d.getMonth() + 1
+		const day = d.getDate()
+		const currentYear = today.getFullYear()
+		if (y === currentYear) return `${m}月${day}号`
+		return `${y}年${m}月${day}号`
+	}
+
+	const startDatePickerValue = computed(() => startDate.value.length > 0 ? startDate.value : isoFromDate(new Date()))
+	const endDatePickerValue = computed(() => endDate.value.length > 0 ? endDate.value : isoFromDate(new Date()))
+
+	const displayedTransactions = computed(() => {
+		const list = dataList.value
+		if (list.length === 0) return list
+
+		const keyword = debouncedKeyword.value.toLowerCase()
+		const typeFilter = typeIndex.value === 1 ? 'income' : (typeIndex.value === 2 ? 'expense' : 'all')
+		let start = startDate.value
+		let end = endDate.value
+		if (start.length > 0 && end.length > 0 && start > end) {
+			const tmp = start
+			start = end
+			end = tmp
+		}
+
+		const out: any[] = []
+		for (let i = 0; i < list.length; i++) {
+			const t: any = list[i]
+			const tType = t.type != null ? String(t.type) : 'expense'
+			if (typeFilter !== 'all' && tType !== typeFilter) continue
+
+			const dateStr = t.date != null ? String(t.date) : ''
+			if (start.length > 0 && dateStr.length > 0 && dateStr < start) continue
+			if (end.length > 0 && dateStr.length > 0 && dateStr > end) continue
+
+			if (keyword.length > 0) {
+				const desc = (t.description != null ? String(t.description) : '').toLowerCase()
+				const cat = (t.category != null ? String(t.category) : '').toLowerCase()
+				const note = (t.note != null ? String(t.note) : '').toLowerCase()
+				if (!desc.includes(keyword) && !cat.includes(keyword) && !note.includes(keyword)) continue
+			}
+
+			out.push(t)
+		}
+		return out
 	})
+
+	const totalCount = computed(() => dataList.value.length)
+	const shownCount = computed(() => displayedTransactions.value.length)
+
+	function getEventX(e: any): number {
+		const touch = e?.touches?.[0] ?? e?.changedTouches?.[0]
+		if (touch != null && touch.clientX != null) return Number(touch.clientX)
+		if (e != null && e.clientX != null) return Number(e.clientX)
+		return 0
+	}
+
+	function clampOffset(v: number): number {
+		if (v < 0) return 0
+		if (v > DELETE_WIDTH) return DELETE_WIDTH
+		return v
+	}
+
+	function onSwipeStart(id: string, e: any) {
+		if (swipeOpenId.value.length > 0 && swipeOpenId.value !== id) {
+			swipeOpenId.value = ''
+		}
+		swipeTrackingId.value = id
+		swipeStartX.value = getEventX(e)
+		swipeBaseOffset.value = swipeOpenId.value === id ? DELETE_WIDTH : 0
+		swipeOffset.value = swipeBaseOffset.value
+	}
+
+	function onSwipeMove(e: any) {
+		if (swipeTrackingId.value.length === 0) return
+		const x = getEventX(e)
+		const delta = x - swipeStartX.value
+		swipeOffset.value = clampOffset(swipeBaseOffset.value - delta)
+	}
+
+	function onSwipeEnd() {
+		if (swipeTrackingId.value.length === 0) return
+		const id = swipeTrackingId.value
+		swipeOpenId.value = swipeOffset.value >= DELETE_THRESHOLD ? id : ''
+		swipeTrackingId.value = ''
+		swipeOffset.value = 0
+		swipeBaseOffset.value = 0
+	}
+
+	function getSwipeOffset(id: string): number {
+		if (swipeTrackingId.value === id) return swipeOffset.value
+		if (swipeOpenId.value === id) return DELETE_WIDTH
+		return 0
+	}
+
+	function getSwipeTranslateX(id: string): number {
+		return -getSwipeOffset(id)
+	}
+
+	function isDeleteVisible(id: string): boolean {
+		if (swipeTrackingId.value === id) return swipeOffset.value > 0
+		return swipeOpenId.value === id
+	}
+
+	function onTransactionTap(id: string) {
+		if (swipeOpenId.value.length > 0) {
+			swipeOpenId.value = ''
+			return
+		}
+		goToTransactionDetail(id)
+	}
+
+	function onDeleteExpense(id: string) {
+		const prev = [...dataList.value]
+		dataList.value = prev.filter((t: any) => String(t.id) !== String(id))
+		swipeOpenId.value = ''
+		const ok = removeExpense(id)
+		if (ok) {
+			uni.showToast({ title: '已删除', icon: 'none', duration: 1200 })
+			loadTransactions()
+			return
+		}
+		dataList.value = prev
+		uni.showToast({ title: '删除失败', icon: 'none', duration: 1200 })
+	}
 
 	const groupedTransactions = computed(() => {
 		const groups: Record<string, any[]> = {}
 		
-		filteredTransactions.value.forEach((t: any) => {
-			if (!groups[t.date]) {
-				groups[t.date] = []
-			}
-			const catInfo = categoryMeta(String(t.category || ''), String(t.type || 'expense'))
-			groups[t.date].push({
+		displayedTransactions.value.forEach((t: any) => {
+			const dateKey = t.date != null ? String(t.date) : ''
+			if (dateKey.length === 0) return
+			if (groups[dateKey] == null) groups[dateKey] = []
+			const categoryText = t.category != null ? String(t.category) : ''
+			const typeText = t.type != null ? String(t.type) : 'expense'
+			const descText = t.description != null ? String(t.description) : ''
+			const noteText = t.note != null ? String(t.note) : ''
+			const catInfo = categoryMeta(categoryText, typeText)
+			groups[dateKey].push({
 				...t,
-				iconKind: t.iconKind || catInfo.iconKind,
-				iconBg: t.iconBg || catInfo.iconBg,
-				iconColor: t.iconColor || catInfo.iconColor
+				category: categoryText,
+				type: typeText,
+				description: descText,
+				noteText,
+				iconKind: t.iconKind != null ? t.iconKind : catInfo.iconKind,
+				iconBg: t.iconBg != null ? t.iconBg : catInfo.iconBg,
+				iconColor: t.iconColor != null ? t.iconColor : catInfo.iconColor
 			})
 		})
 
-		const sortedDates = Object.keys(groups).sort((a, b) => 
-			new Date(b).getTime() - new Date(a).getTime()
-		)
+		const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a))
 
 		return sortedDates.map(dateStr => {
-			const date = new Date(dateStr)
-			const today = new Date()
-			const yesterday = new Date(today)
-			yesterday.setDate(yesterday.getDate() - 1)
-
-			let label = ''
-			if (date.toDateString() === today.toDateString()) {
-				label = '今天'
-			} else if (date.toDateString() === yesterday.toDateString()) {
-				label = '昨天'
-			} else {
-				label = `${date.getMonth() + 1}月${date.getDate()}日`
-			}
-
 			return {
 				date: dateStr,
-				label,
+				label: formatGroupLabel(dateStr),
 				items: groups[dateStr]
 			}
 		})
@@ -221,7 +485,7 @@
 	.page {
 		display: flex;
 		flex-direction: column;
-		height: 100vh;
+		height: 100%;
 		background-color: #f9fafb;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	}
@@ -232,8 +496,6 @@
 		padding-right: 16px;
 		padding-top: 24px;
 		padding-bottom: 16px;
-		position: sticky;
-		top: 0;
 		z-index: 30;
 		border-bottom-width: 1px;
 		border-bottom-color: #f3f4f6;
@@ -270,6 +532,86 @@
 	.search-section {
 		flex-direction: row;
 	}
+	
+	.count-row {
+		margin-top: 8px;
+	}
+	
+	.count-text {
+		font-size: 12px;
+		color: #94a3b8;
+	}
+
+	.filter-panel {
+		margin-top: 12px;
+		background-color: #ffffff;
+		border-width: 1px;
+		border-color: #e5e7eb;
+		border-radius: 10px;
+		padding: 12px;
+	}
+
+	.filter-row {
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		padding-top: 8px;
+		padding-bottom: 8px;
+	}
+
+	.filter-label {
+		font-size: 12px;
+		color: #64748b;
+	}
+
+	.filter-value {
+		padding-left: 10px;
+		padding-right: 10px;
+		padding-top: 6px;
+		padding-bottom: 6px;
+		border-radius: 999px;
+		background-color: #f1f5f9;
+		border-width: 1px;
+		border-color: #e2e8f0;
+	}
+
+	.filter-value-text {
+		font-size: 12px;
+		color: #0f172a;
+	}
+
+	.filter-actions {
+		margin-top: 8px;
+		flex-direction: row;
+		justify-content: flex-end;
+	}
+
+	.filter-action-btn {
+		padding-left: 12px;
+		padding-right: 12px;
+		padding-top: 8px;
+		padding-bottom: 8px;
+		border-radius: 8px;
+		border-width: 1px;
+		border-color: #e5e7eb;
+		background-color: #ffffff;
+		margin-left: 10px;
+	}
+
+	.filter-action-btn.primary {
+		background-color: #1152d4;
+		border-color: #1152d4;
+	}
+
+	.filter-action-text {
+		font-size: 12px;
+		color: #334155;
+	}
+
+	.filter-action-text.primary-text {
+		color: #ffffff;
+		font-weight: 600;
+	}
 
 	.search-box {
 		flex: 1;
@@ -295,7 +637,6 @@
 		height: 40px;
 		font-size: 14px;
 		border: none;
-		outline: none;
 		background-color: transparent;
 	}
 
@@ -321,9 +662,6 @@
 		padding-left: 16px;
 		padding-right: 16px;
 		padding-bottom: 96px;
-		-ms-overflow-style: none;
-		scrollbar-width: none;
-		padding-bottom: calc(74px + env(safe-area-inset-bottom)); 
 	}
 	
 	.content::-webkit-scrollbar {
@@ -335,7 +673,7 @@
 		padding: 60px 20px;
 	}
 
-	.empty-state text {
+	.empty-state-text {
 		color: #94a3b8;
 		font-size: 14px;
 	}
@@ -348,7 +686,6 @@
 		font-size: 12px;
 		font-weight: 600;
 		color: #64748b;
-		text-transform: uppercase;
 		letter-spacing: 1px;
 		margin-bottom: 12px;
 	}
@@ -357,20 +694,60 @@
 		flex-direction: column;
 	}
 
+	.swipe-row {
+		position: relative;
+		overflow: hidden;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		background-color: #ffffff;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	}
+
+	.swipe-delete {
+		position: absolute;
+		right: 0;
+		top: 0;
+		bottom: 0;
+		width: 80px;
+		background-color: #FF3B30;
+		align-items: center;
+		justify-content: center;
+		z-index: 0;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.swipe-delete.visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.swipe-delete-text {
+		color: #ffffff;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
 	.transaction-item {
+		position: relative;
+		z-index: 1;
 		flex-direction: row;
 		justify-content: space-between;
 		align-items: center;
 		padding: 12px;
 		background-color: #ffffff;
-		border-radius: 8px;
+		border-radius: 8px 0 0 8px;
 		border-width: 1px;
 		border-color: #f9fafb;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-		margin-bottom: 12px;
+		overflow: hidden;
+		background-clip: border-box;
+		transition-property: transform;
+		transition-duration: 180ms;
+		transition-timing-function: ease;
+		transform: translateZ(0);
 	}
 
-	.transaction-item:last-child {
+	.swipe-row:last-child {
 		margin-bottom: 0;
 	}
 
@@ -438,7 +815,7 @@
 		padding-left: 24px;
 		padding-right: 24px;
 		padding-top: 12px;
-		padding-bottom: calc(12px + env(safe-area-inset-bottom));
+		padding-bottom: 12px;
 		z-index: 40;
 		overflow: visible;
 	}

@@ -18,24 +18,47 @@ const STORAGE_KEY = 'transactions'
 
 function safeParseArray(value: string): any[] {
 	try {
-		const parsed = JSON.parse(value)
-		return Array.isArray(parsed) ? parsed : []
+		const parsed = JSON.parseArray(value)
+		return parsed != null ? parsed : []
 	} catch (e) {
 		return []
 	}
 }
 
+function toText(value: any): string {
+	if (value == null) return ''
+	return `${value}`
+}
+
+function readAny(raw: any, key: string): any | null {
+	if (raw == null) return null
+	if (raw instanceof UTSJSONObject) {
+		return raw.getAny(key)
+	}
+	try {
+		const obj = JSON.parseObject(JSON.stringify(raw))
+		if (obj == null) return null
+		return obj.getAny(key)
+	} catch (e) {
+		return null
+	}
+}
+
 function normalizeTransaction(raw: any): Transaction | null {
-	if (!raw) return null
-	const id = String(raw.id || '')
-	if (!id) return null
-	const type = String(raw.type || 'expense') as TransactionType
-	const amount = Number(raw.amount)
-	const category = String(raw.category || '')
-	const description = String(raw.description || raw.note || '')
-	const date = String(raw.date || '')
-	if (!date) return null
-	if (!amount || amount <= 0) return null
+	if (raw == null) return null
+	const id = toText(readAny(raw, 'id'))
+	if (id.length === 0) return null
+	const typeText = toText(readAny(raw, 'type'))
+	const type = (typeText.length > 0 ? typeText : 'expense') as TransactionType
+	const rawAmount = readAny(raw, 'amount')
+	const amount = rawAmount != null ? Number(rawAmount) : 0
+	const category = toText(readAny(raw, 'category'))
+	let description = toText(readAny(raw, 'description'))
+	if (description.length === 0) description = toText(readAny(raw, 'note'))
+	const date = toText(readAny(raw, 'date'))
+	if (date.length === 0) return null
+	if (isNaN(amount)) return null
+	if (amount <= 0) return null
 	if (type !== 'income' && type !== 'expense') return null
 
 	const tx: Transaction = {
@@ -47,11 +70,16 @@ function normalizeTransaction(raw: any): Transaction | null {
 		date
 	}
 
-	if (raw.note != null) tx.note = String(raw.note)
-	if (raw.iconText != null) tx.iconText = String(raw.iconText)
-	if (raw.iconBg != null) tx.iconBg = String(raw.iconBg)
-	if (raw.iconColor != null) tx.iconColor = String(raw.iconColor)
-	if (raw.iconKind != null) tx.iconKind = String(raw.iconKind)
+	const note = toText(readAny(raw, 'note'))
+	if (note.length > 0) tx.note = note
+	const iconText = toText(readAny(raw, 'iconText'))
+	if (iconText.length > 0) tx.iconText = iconText
+	const iconBg = toText(readAny(raw, 'iconBg'))
+	if (iconBg.length > 0) tx.iconBg = iconBg
+	const iconColor = toText(readAny(raw, 'iconColor'))
+	if (iconColor.length > 0) tx.iconColor = iconColor
+	const iconKind = toText(readAny(raw, 'iconKind'))
+	if (iconKind.length > 0) tx.iconKind = iconKind
 	return tx
 }
 
@@ -84,12 +112,13 @@ export function seedTransactionsIfEmpty(): Transaction[] {
 
 export function getTransactions(): Transaction[] {
 	const stored = uni.getStorageSync(STORAGE_KEY) as string | null
-	if (!stored) return []
+	if (stored == null) return []
+	if (stored.length === 0) return []
 	const arr = safeParseArray(stored)
 	const result: Transaction[] = []
 	for (let i = 0; i < arr.length; i++) {
 		const tx = normalizeTransaction(arr[i])
-		if (tx) result.push(tx)
+		if (tx != null) result.push(tx)
 	}
 	return result
 }
@@ -104,24 +133,40 @@ export function getTransactionById(id: string): Transaction | null {
 	return found ? found : null
 }
 
-export function addTransaction(tx: Transaction): void {
+export function addTransaction(tx: any): Transaction | null {
+	const normalized = normalizeTransaction(tx)
+	if (normalized == null) return null
 	const list = getTransactions()
-	list.push(tx)
+	list.push(normalized)
 	setTransactions(list)
+	return normalized
 }
 
-export function updateTransactionById(id: string, updater: (prev: Transaction) => Transaction): Transaction | null {
+export function updateTransactionById(id: string, updater: (prev: Transaction) => any): Transaction | null {
 	const list = getTransactions()
 	const idx = list.findIndex((t: Transaction) => t.id === id)
 	if (idx < 0) return null
-	const next = updater(list[idx])
-	list[idx] = next
+	const nextRaw = updater(list[idx])
+	const normalized = normalizeTransaction(nextRaw)
+	if (normalized == null) return null
+	list[idx] = normalized
 	setTransactions(list)
-	return next
+	return normalized
 }
 
 export function deleteTransactionById(id: string): boolean {
 	const list = getTransactions()
+	const next = list.filter((t: Transaction) => t.id !== id)
+	if (next.length === list.length) return false
+	setTransactions(next)
+	return true
+}
+
+export function removeExpense(id: string): boolean {
+	if (id.length === 0) return false
+	const list = getTransactions()
+	const target = list.find((t: Transaction) => t.id === id)
+	if (target == null) return false
 	const next = list.filter((t: Transaction) => t.id !== id)
 	if (next.length === list.length) return false
 	setTransactions(next)
@@ -133,4 +178,3 @@ export function exportTransactionsJson(pretty: boolean): string {
 	if (pretty) return JSON.stringify(list, null, 2)
 	return JSON.stringify(list)
 }
-
